@@ -1,0 +1,2 @@
+# setup paramaters for itamae via PyPi/pip install
+include LICENSE CHANGES README.md TODO

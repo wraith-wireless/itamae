@@ -1,0 +1,20 @@
+Standards:
+  1) Should we add support for AVS, Prism headers?
+  2) radiotap: ensure data pad is handled for atheros cards (any others?)
+  3) mpdu, fully parse
+     o control wrapper
+     o +htc
+     o info-elements
+      - RSN Std 8.4.2.27, #48
+      - TIM Info-Element #5 from beacons could be useful
+      - parse timing advance
+     o support a-msdu etc
+  6) 802.1X parsing?
+  7) other 802.11 standards i.e mesh
+  8) do we extend for 802.2 LLC and layer 3 IP parsing?
+  9) default MPDU() does not create err field
+ 10) allow for invalid values in MPDU (could help identify fuzzing attempts)
+ 11) avoid passing strings everywhere. could we use a buffer?
+ 12) consider allowing for building of packets
+ 13) I cannot remember why I use '@' format byte order specifier in radiotap and
+  '=' in mpdu
