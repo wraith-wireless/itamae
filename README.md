@@ -221,7 +221,12 @@ To parse the MPDU layer, we need to pass the raw frame at the beginning
 of layer two. For that, we need to refer back to the size of the radiotap
 frame. Additionally, depending on your interface's firmware the raw frame
 may include the MPUD's FCS. If it is included, it will be set in the radiotap's
-flags field.
+flags field. The MPDU dict exposes the toplevel MPDU fields via the '.' operator. 
+They are framectrl, duration, addr1 ... addr4 (as present), seqctrl, qosctrl,
+crypt and fcs. For convience it also exposes some sublevel fields:
+vers, type (framectrl->type), subtype (framectrl->subtype) and flags
+(framectrl->flags) as well as non-MPDU fields, offset, stripped, size, 
+present and error.
 
 ```python
 >>> import itamae.mpdu as mpdu
@@ -238,10 +243,74 @@ flags field.
 >>> hasFCS 
 0
 >>> dM = mpdu.parse(raw1[dR1['sz']:],hasFCS)
->>> dM.present 
-['framectrl', 'duration', 'addr1', 'addr2', 'addr3', 
-'seqctrl', 'qos', 'l3-crypt']
+>>> dM.error
+[]
+>>> dM.size, dM.offset, dM.stripped, dM.size
+(42, 34, 8)
+>>>
+>>> for field in dM.present: print "{0}: {1}".format(field, dM[field])
+... 
+framectrl: {'subtype': 8, 'vers': 0, 'type': 2, 
+            'flags': {'md': 0, 'mf': 0, 'o': 0, 'r': 0, 'fd': 0, 'pf': 1, 
+            'td': 1, 'pm': 0}}
+duration: {'dur': 48, 'type': 'vcs'}
+addr1: 04:a1:51:d0:dc:0f
+addr2: b0:34:95:6e:30:02
+addr3: 04:a1:51:d0:dc:0f
+seqctrl: {'seqno': 960, 'fragno': 0}
+qos: {'tid': 0, 'a-msdu': 0, 'ack-policy': 0, 'eosp': 0, 'txop': 0}
+l3-crypt: {'mic': '\xcb\xd6\x97O.\xde\x07\x11', 'rsrv': '\x00', 'pn5': '\x07', 
+           'pn1': '\x08', 'pn0': '\x07', 'pn3': '\x00', 'pn2': '\n', 
+           'type': 'ccmp', 'pn4': '\x00', 'key-id': {'ext-iv': 1, 'rsrv': 0, 
+                                                     'key-id': 0}}
 ```
+
+The fields size offset, stripped and error are not include in the present list 
+as they are not official components of a MPDU. They define, in order, the total 
+size in bytes of the MPDU frame, the bytes read from the front, the bytes read 
+from the end (in this case the 8 bytes of the MIC of the CCMP encryption but it 
+would also include FCS if present) and any errors encountered during parsing. 
+Keeping in mind that mpdu.parse begins at the first byte of the MPDU, the total 
+bytes parsed (including the radiotap) would be 60 (18 + 34 + 8). If you wanted 
+to look at the unparsed bytes i.e. the LLC sub layer, Layer 3 etc you would 
+slice as follows:
+ 
+```python [dR.sz+dM.offset:-dM.stripped]``` 
+
+Examining the frame control field we see that the type is 2 (Data) and the 
+subtype is 8 (QoS) and that the protected frame flag and to ds flag are set.
+Remember these are also exposes via the '.' operator. If you need to get 
+a "human-readable" version try:
+
+```python
+>>> mpdu.FT_TYPES[dM.type]
+'data'
+>>> mpdu.ST_DATA_TYPES[dM.subtype]
+'qos-data'
+```
+
+Moving on, we see that the duration field is another dict duration: {'dur': 48, 
+'type': 'vcs'}. Defining the duration field is outside the scope of this 
+document. For further information see the 802.11-2012 or CWAP Certified
+Analysis or search on google. This frame has three address which are self
+explanatory. Next is the sequence control field which is also another dict 
+containing the fragment number and sequence number. However, l3-crypt does
+relay the type of encryption used in the 'type' field. In this case, it is
+CCMP.
+
+The last two fields are the QoS control field and the layer 3 encryption 
+field. Again, it is outside the scope of this document to define each of 
+these. 
+
+### Moving Foward
+ATT, there are still some further steps to take. Radiotap needs to be tested
+against Atheros card to ensure that the data padding is handled correctly. 
+For MPDU, control wrappers and a-msdu are not parsed. I have not found
+any test frames to use with a HT control field to test against.
+ 
+To improve, I also want to parse more info-elements including RSN, TIM
+and vendor-related as well as provide for 802.1X parsing and possibly 
+parsing of layer 3 if not encrypted.
 
 ## 4. ARCHITECTURE/HEIRARCHY:
 Brief Overview of the project file structure. Directories and/or files annotated
