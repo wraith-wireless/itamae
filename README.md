@@ -242,7 +242,7 @@ present and error.
 >>> hasFCS = rtap.flags_get(dR1['flags'],'fcs')
 >>> hasFCS 
 0
->>> dM = mpdu.parse(raw1[dR1['sz']:],hasFCS)
+>>> dM = mpdu.parse(raw1[dR1.sz:],hasFCS)
 >>> dM.error
 []
 >>> dM.size, dM.offset, dM.stripped, dM.size
@@ -279,7 +279,7 @@ slice as follows:
 
 Examining the frame control field we see that the type is 2 (Data) and the 
 subtype is 8 (QoS) and that the protected frame flag and to ds flag are set.
-Remember these are also exposes via the '.' operator. If you need to get 
+Remember these are also exposed via the '.' operator. If you need to get 
 a "human-readable" version try:
 
 ```python
