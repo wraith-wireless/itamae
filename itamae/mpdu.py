@@ -163,6 +163,14 @@ class MPDU(dict):
             raise error('MPDU is uninstantiated')
 
     @property
+    def type_desc(self):
+        """ :returns: string repr of type """
+        try:
+            return FT_TYPES[self.type]
+        except KeyError:
+            raise error('MPDU is uninstantiated')
+
+    @property
     def subtype(self):
         """ :returns: subtype as specified in frame control """
         try:
@@ -232,7 +240,7 @@ class MPDU(dict):
     def getie(self,ies):
         """
         :param ies: desired list of info elements
-        :returns: list of of lists of info elements found
+        :returns: list of lists of info elements found
         """
         ret = [[] for _ in ies]
         for ie in self.info_els:

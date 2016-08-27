@@ -18,12 +18,3 @@ Standards:
  12) consider allowing for building of packets
  13) I cannot remember why I use '@' format byte order specifier in radiotap and
   '=' in mpdu
- 14) use the following in radio tap example to show one with flags (fcs is set)
- '\x00\x00\x12\x00.H\x00\x00\x100l\t\xc0\x00\xbe\x03\x00\x00\xb4\x00\x80\x00\xac\xb5}\x8d;0<F\xd8~\x0e\xdd\xc2U0\xde'
- 15) expose certain fields like flags,channel,rx-flags and rate that should
-  alwasy be present in a parsed radiotap. Note: for rate would have to determine
-  if rate is present or if it is defined in mcs fields. Also, should we then
-  make rtap.rate Mbps?
- 16) add functions to rtap to avoid having to manually parse additional i.e
-  channels, flags, rx-flags etc
-  o will have to add error handling if field is not present

@@ -286,7 +286,7 @@ present and error.
 >>> dM = mpdu.parse(raw1[dR1.sz:],hasFCS)
 >>> dM.error
 []
->>> dM.size, dM.offset, dM.stripped, dM.size
+>>> dM.size, dM.offset, dM.stripped
 (42, 34, 8)
 >>>
 >>> for field in dM.present: print "{0}: {1}".format(field, dM[field])
@@ -306,11 +306,14 @@ l3-crypt: {'mic': '\xcb\xd6\x97O.\xde\x07\x11', 'rsrv': '\x00', 'pn5': '\x07',
                                                      'key-id': 0}}
 ```
 
-The fields size offset, stripped and error are not include in the present list 
+The fields size, offset, stripped and error are not included in the present list 
 as they are not official components of a MPDU. They define, in order, the total 
 size in bytes of the MPDU frame, the bytes read from the front, the bytes read 
 from the end (in this case the 8 bytes of the MIC of the CCMP encryption but it 
 would also include FCS if present) and any errors encountered during parsing. 
+mpdu parse will attempt to continue parsing in the event of errors, appending 
+errors to the error list.
+
 Keeping in mind that mpdu.parse begins at the first byte of the MPDU, the total 
 bytes parsed (including the radiotap) would be 60 (18 + 34 + 8). If you wanted 
 to look at the unparsed bytes i.e. the LLC sub layer, Layer 3 etc you would 
@@ -324,9 +327,9 @@ Remember these are also exposed via the '.' operator. If you need to get
 a "human-readable" version try:
 
 ```python
->>> mpdu.FT_TYPES[dM.type]
+>>> mpdu.type_desc
 'data'
->>> mpdu.ST_DATA_TYPES[dM.subtype]
+>>> mpdu.subtype_desc
 'qos-data'
 ```
 
@@ -343,6 +346,36 @@ The last two fields are the QoS control field and the layer 3 encryption
 field. Again, it is outside the scope of this document to define each of 
 these. 
 
+Finally, let us parse a frame where the FCS was not stripped by the firmware.
+We'll also show using the '.' operator vice bracket(s) operator.
+
+```python
+>>> dR3 = radiotap.parse(dR3)
+>>> dR3.flags
+['fcs']
+>>>
+>>> dM3 = mpdu.parse(raw3[dR3.sz:],'fcs' in dR3.flags)
+>>> dM3.size, dM3.offset, dM3.stripped
+(20, 16, 4)
+>>> dM3.fcs
+3727709634
+>>>
+>>> dM3.type_desc, dM3.subtype_desc
+('ctrl', 'rts')
+>>> dM3.flags
+{'md': 0, 'mf': 0, 'o': 0, 'r': 0, 'fd': 0, 'pf': 0, 'td': 0, 'pm': 0}
+>>> dM3.addr1, dM3.addr2
+('ac:b5:7d:8d:3b:30', '3c:46:d8:7e:0e:dd')
+>>>
+>>> dR3.sz + dM3.size == len(raw3)
+True
+```
+
+The raw frame dM3 is an RTS frame with FCS present. Because control frames
+have no layer 3 content (in reality, no MSDU - LLC either) Itamae has 
+parsed the entire frame: this is verified by comparing the total bytes
+parsed with the length of the raw frame.
+
 ### Moving Foward
 ATT, there are still some further steps to take. Radiotap needs to be tested
 against Atheros card to ensure that the data padding is handled correctly. 
@@ -352,6 +385,9 @@ any test frames to use with a HT control field to test against.
 To improve, I also want to parse more info-elements including RSN, TIM
 and vendor-related as well as provide for 802.1X parsing and possibly 
 parsing of layer 3 if not encrypted.
+
+Finally, I would also like to look into using a buffer instead of a string
+to minimize the number of string copies.
 
 ## 4. ARCHITECTURE/HEIRARCHY:
 Brief Overview of the project file structure. Directories and/or files annotated
