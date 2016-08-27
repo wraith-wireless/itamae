@@ -56,7 +56,7 @@ setup(name='itamae',
                    'Topic :: Utilities',
                    'Operating System :: POSIX :: Linux',
                    'Operating System :: MacOS',
-                   'Operating System :: Microsoft :: Windows'
+                   'Operating System :: Microsoft :: Windows',
                    'Programming Language :: Python',
                    'Programming Language :: Python :: 2.7'],
     keywords='802.11 wireless WLAN WiFi parser MPDU, radiotap',
