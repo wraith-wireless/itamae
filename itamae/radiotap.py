@@ -30,14 +30,15 @@ NOTE:
 """
 __name__ = 'radiotap'
 __license__ = 'GPL v3.0'
-__version__ = '0.0.4'
-__date__ = 'August 2014'
+__version__ = '0.0.5'
+__date__ = 'August 2016'
 __author__ = 'Dale Patterson'
 __maintainer__ = 'Dale Patterson'
 __email__ = 'wraith.wireless@yandex.com'
-__status__ = 'Development'
+__status__ = 'Production'
 
 import struct
+import itamae.mcs as mcs
 from itamae.bits import bitmask,bitmask_list,bitmask_get
 
 class error(EnvironmentError): pass
@@ -46,12 +47,39 @@ FMT_BO = "@" # struct format byte order specifier
 
 class RTAP(dict):
     """
-     a wrapper for the underlying Radiotap dict with following mandatory key/value
+     A wrapper for the underlying Radiotap dict with following mandatory key/value
      pairs:
       vers: radiotap version
       sz: size in bytes of the radiotap header
       present: an ordered list of radiotap fields present in the frame
-     and additional key->value pairs for each field in present
+     RTAP will also contain fields as they are found in the frame
+
+     RTAP expose certain 'toplevel' fields so that users can call
+     for example dictRTAP.vers rather than dictRTAP['vers']. Mandatory
+     fields are listed below:
+      vers: version number,
+      sz: bytes read, and
+      present: ordered list of present fields
+     Attempting to access these fields in a uninstantiated RTAP will result in
+     an exception.
+
+     Because radiotap is not as structured as the layer 2 MAC, it is difficult
+     to determine which fields will always be present. Below are listed
+     additional fields that are exposed via '.' which will return the
+     appropriate value or None if the field is not present
+      flags: list of set signal flags,
+      channel: the channel (actually freq) of signal,
+      chflags: list of set channel flags,
+      antenna: antenna index signal was collected on,
+      rss: signal strength in dBm, and
+      mcs_known: a list of what is carried in the MCS i.e. bw, gi etc
+       see comments for mcsknown for more details. if a flag is in known then
+       its value can be found in the mcsflags (except for mcs index)
+      mcs_flags: dict of flags->values for mcs parameters
+      mcs_index: the mcs index
+      rate: the rate in Mbps of the signal (Note: this will return either
+       the rate as found in the rate field or as calculated by the mcs)
+
     """
     def __new__(cls,d=None):
         return super(RTAP,cls).__new__(cls,dict({} if d is None else d))
@@ -62,7 +90,7 @@ class RTAP(dict):
         try:
             return self['vers']
         except KeyError:
-            return None
+            raise error("RTAP is not instantiated")
 
     @property
     def sz(self):
@@ -70,7 +98,7 @@ class RTAP(dict):
         try:
             return self['sz']
         except KeyError:
-            return None
+            raise error("RTAP is not instantiated")
 
     @property
     def present(self):
@@ -78,7 +106,92 @@ class RTAP(dict):
         try:
             return self['present']
         except KeyError:
-            return []
+            raise error("RTAP is not instantiated")
+
+    @property
+    def flags(self):
+        """ returns a list of all flags that are set """
+        try:
+            return flags(self['flags'])
+        except KeyError:
+            return None
+
+    @property
+    def channel(self):
+        """ returns the channel (actually frequency) """
+        try:
+            return self['channel'][0]
+        except KeyError:
+            return None
+
+    @property
+    def chflags(self):
+        """ returns a list of channel flags that are set """
+        try:
+            return chflags(self['channel'][1])
+        except KeyError:
+            return None
+        except IndexError:
+            raise error("Radiotap is not properly formed")
+
+    @property
+    def antenna(self):
+        """ returns antenna index frame was collected on """
+        try:
+            return self['antenna']
+        except KeyError:
+            return None
+
+    @property
+    def rss(self):
+        """ returns the recieved signal strength in dBm """
+        try:
+            return self['antsignal']
+        except KeyError:
+            return None
+
+    @property
+    def mcsknown(self):
+        """ returns the known mcs parameter flags of the signal """
+        try:
+            return mcsknown(self['mcs'][0])
+        except KeyError:
+            raise error("Signal is not HT or is not instantiated")
+        except IndexError:
+            raise error("Radiotap is not properly formed")
+
+    @property
+    def mcsflags(self):
+        """ returns a dict of mcs parameter flags and values """
+        try:
+            return mcsflags_params(self['mcs'][0],self['mcs'][1])
+        except KeyError:
+            raise error("Signal is not HT or is not instantiated")
+        except IndexError:
+            raise error("Radiotap is not properly formed")
+
+    @property
+    def mcsindex(self):
+        """ returns the mcs index of the signal """
+        try:
+            return self['mcs'][2]
+        except KeyError:
+            raise error("Signal is not HT or is not instantiated")
+        except IndexError:
+            raise error("Radiotap is not properly formed")
+
+    @property
+    def rate(self):
+        """ returns the rate in Mbps of the signal """
+        if 'rate' in self.present: # non-HT
+            return self['rate'] * 0.5
+        elif 'mcs' in self.present: # HT
+            mflags = self.mcsflags
+            g = 1 if 'gi' in mflags and mflags['gi'] > 0 else 0
+            w = 40 if 'bw' in mflags and mflags['bw'] == MCS_BW_40 else 20
+            return mcs.mcs_rate(self['mcs'][2],w,g)
+        else:
+            return None
 
 def parse(f):
     """

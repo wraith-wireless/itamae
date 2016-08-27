@@ -48,7 +48,7 @@ FMT_BO = "="                    # struct format byte order specifier
 
 class MPDU(dict):
     """
-     a wrapper for the underlying mpdu dict with the following mandatory
+     A wrapper for the underlying mpdu dict with the following mandatory
      key/value pairs:
       FRAMECTRL|DURATION|ADDR1 (and fcs if not stripped by firmware) see Std 8.3.1.3]
       present: an ordered list of mpdu fields
@@ -272,11 +272,11 @@ def parse(f,hasFCS=False):
         m['addr1'] = _hwaddr_(vs[1:])
         m['present'].extend(['duration','addr1'])
         if hasFCS:
-            m['fcs'],_ = struct.unpack(FMT_BO+'L',f[-4:])
+            m['fcs'] = struct.unpack(FMT_BO+'L',f[-4:])[0]
             f = f[:-4]
             m['stripped'] += 4
-    except struct.error as e:
-        raise error("Failed to unpacking: {0}".format(e))
+    except (struct.error,ValueError) as e:
+        raise error("Failed to unpack: {0}".format(e))
     else:
         # handle frame types separately (return on FT_RSRV
         if m.type == FT_MGMT: _parsemgmt_(f,m)

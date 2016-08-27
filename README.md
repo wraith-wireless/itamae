@@ -73,7 +73,7 @@ and from the itamae directory run:
 ## 3. USING
 
 Before using Itamae, you'll need a wireless card in monitor mode and a raw socket. 
-You can use iw or, shameless plug follows, <a href="https://github.com/wraith-wireless/PyRIC">PyRIC</a> 
+You can use iw (or, shameless plug follows <a href="https://github.com/wraith-wireless/PyRIC">PyRIC</a>) 
 to create a virtual interface and use the Python socket module to bind the raw 
 socket. Before showing Itamae examples, let's set up our card and socket. You'll
 need to be root to do so.
@@ -90,53 +90,73 @@ need to be root to do so.
 >>> sock.bind((card.dev,0x0003))
 ```
 
-Before showing how to parse with Itamae, it is best to describe how the 
-radiotap and MPDU are handled. Each is a wrapper around a dict that exposes
-certain fields using the '.' operator. And for each, the respective parse
-function takes a byte stream and returns the appropriate layer dict. Unlike
-Scapy and other protocol parsers, Itamae does not parse and/or treat radiotap
-and MPDU as a layered hierarchy. That is, the parsed MPDU is not an object 
-contained within the radiotap object.
+With the raw socket ready, we can read the raw frames and parse them with Itamae.
+ 
+```python
+>>> from itamae.mpdu import MAX_MPDU
+>>> raw = sock.recv(MAX_MPDU)
+```
 
-After creating a raw socket ready, we can read the raw bytes and parse the raw
-frame with Itamae. Let us start with radiotap. Radiotap exposes three fields, 
-the version, the size and the present list. For any other field, you will have 
-to use the bracket(s) operator.
+Before showing how to parse with Itamae, it is best to describe how the RTAP 
+object and MPDU object are handled. Each is a wrapper around a dict that exposes 
+certain fields using the '.' operator. And for each, the respective parse 
+function takes a byte stream and returns the appropriate layer dict. Unlike Scapy 
+and other protocol parsers, Itamae does not parse and/or treat RTAP and MPDU as 
+a layered hierarchy. That is, the parsed MPDU is not an object contained within 
+the radiotap object.
+
+For the following examples we will be parsing three frames as shown below:
+
+```python
+>>> len(raw1), raw1
+(171, "\x00\x00\x12\x00.H\x00\x00\x00$l\t\xc0\x00\xb5\x01\x00\x00\x88A0\x00
+\x04\xa1Q\xd0\xdc\x0f\xb04\x95n0\x02\x04\xa1Q\xd0\xdc\x0f\x00<\x00\x00\x07\x08
+\x00 \n\x00\x00\x00\xa9\xe6\xfc\x98  T\xe4\xed\xf5\x01w`\xe76\x18@D.'\xaf:;\xa3
+\xff\xf2\xb8\x88J\xe8\xeeL\x84\xaf\x08$\x1e\x87\xbc\x8e\xa0\x8e\x86\xd1\xce\xa26
+\x84\xa4.\xf5#\xff\xc07`\xd4\xb2\xe4\xaf\n\x01\xcby\x9e4\xb5\xac:0a]\x9d\xfb
+\xbf5X\xb3\xc5-f\xca0\xb77~4\xd5\xbf9\x8d\xf3oZ\xcb\xe6>t\xd35\x01\x1c%\x19
+\x8cD+\xd6\xc7W\x81\xcb\xd6\x97O.\xde\x07\x11")
+>>>
+>>> len(raw2), raw2
+(153, "\x00\x00\x15\x00*H\x08\x00\x00\x00\x9e\t\x80\x04\xc3\x01\x00\x00\x07
+\x00\x05\x88\xc1,\x00\x08\x86;C\xf2h\x949\xe5i\xcf\x0b\xff\xff\xff\xff\xff
+\xff\x90\x1a\x00\x00\xc0\xff\x00\xc0RM\x00 \x0b\x00\x00\x00!\xd0M$6\x15\x8f5;
+\xaf\xc1\xee_\xae\x84 >\xc72\xdaJ-\xb6\xb61\x85+\xa1\xe4\xd1ys\xe9B\xe4\x8b%
+\xaa\xe0j\xdf\x86\x04\xe6\x88\x89g\x11\x85\xb4\x0f\xbcI'Df\xcd\xbf\x83\xf5
+\x10\xec\x1b\xa1FMD\x81\xcb\xbe\xa9qO\xc3\xb8\xecL\xb6[:\xe2h\xd5\x13\xbd
+\xdd\x94\xd6\xe2\xa6)\xd8\x9b\xab")
+>>>
+>>> len(raw3), raw3
+(38, '\x00\x00\x12\x00.H\x00\x00\x100l\t\xc0\x00\xbe\x03\x00\x00\xb4\x00\x80
+\x00\xac\xb5}\x8d;0<F\xd8~\x0e\xdd\xc2U0\xde')
+```
+
+As can be seen from above the sizes of the frames are 171 bytes, 153 bytes and 38 
+bytes respectively.
+
+Let us begin parsing with radiotap, radiotap.parse() returns a RTAP object. RTAP 
+always exposes three fields: the version, the size and the present list. RTAP will
+also expose certain other commonly found fields via the '.' operator and for all
+others, the bracket(s) operator will work. Parsing raw1 we get:
 
 ```python
 >>> import itamae.radiotap as rtap
->>> raw1 = sock.recv(7096)
->>> len(raw1)
-171
->>> raw1
-"\x00\x00\x12\x00.H\x00\x00\x00$l\t\xc0\x00\xb5\x01\x00\x00\x88A0\x00\x04\xa1Q
-\xd0\xdc\x0f\xb04\x95n0\x02\x04\xa1Q\xd0\xdc\x0f\x00<\x00\x00\x07\x08\x00 \n
-\x00\x00\x00\xa9\xe6\xfc\x98  T\xe4\xed\xf5\x01w`\xe76\x18@D.'\xaf:;\xa3\xff
-\xf2\xb8\x88J\xe8\xeeL\x84\xaf\x08$\x1e\x87\xbc\x8e\xa0\x8e\x86\xd1\xce\xa26
-\x84\xa4.\xf5#\xff\xc07`\xd4\xb2\xe4\xaf\n\x01\xcby\x9e4\xb5\xac:0a]\x9d\xfb
-\xbf5X\xb3\xc5-f\xca0\xb77~4\xd5\xbf9\x8d\xf3oZ\xcb\xe6>t\xd35\x01\x1c%\x19
-\x8cD+\xd6\xc7W\x81\xcb\xd6\x97O.\xde\x07\x11"
->>>
 >>> dR1 = rtap.parse(raw1)
 >>> dR1
-{'sz': 18, 'vers': 0, 'antenna': 1, 'rx_flags': 0, 'antsignal': -75, 'rate': 36, 
+{'sz': 18, 'vers': 0, 'antenna': 1, 'rx-flags': 0, 'antsignal': -75, 'rate': 36, 
 'flags': 0, 'channel': [2412, 192], 'present': ['flags', 'rate', 'channel', 
-'antsignal', 'antenna', 'rx_flags']}
->>>
->>> dR1.vers
-0
->>> dR1.sz
-18
->>> dR1.present
-['flags', 'rate', 'channel', 'antsignal', 'antenna', 'rx-flags']
+'antsignal', 'antenna', 'rx-flags']}
+>>> dR1.vers,dR1.sz,dR1.present
+(0, 18, ['flags', 'rate', 'channel', 'antsignal', 'antenna', 'rx-flags'])
+>>> 
 ```
 
 So far, we have read a raw frame of 171 bytes (which as we will see later is 
 a data frame) off our monitor interface and parsed the radiotap "layer". We can 
-print the version (0), size, in byrtes, (18) and the list of present fields (flags, 
-rate, channel, antsignal, antenna and rx-flags). Not let us continue and look at 
-the present fields (see http://www.radiotap.org/defined-fields) for a listing
-of all defined fields:
+print the version (0), size, in bytes, (18) and the list of present fields (flags, 
+rate, channel, antsignal, antenna and rx-flags). Let us continue with the present 
+fields (see http://www.radiotap.org/defined-fields for a listing
+of all defined fields):
  
  * flags: frame properties. see http://www.radiotap.org/defined-fields/Flags
  * rate: TX/RX data rate (in 500Kbps)
@@ -146,42 +166,80 @@ of all defined fields:
  * antenna: the antenna index starting at 0. 
  * rx-flags: received frame properties. see http://www.radiotap.org/defined-fields/RX%20flags
  
-In the above frame, the 2nd antenna read the frame (antenna = 1) at -75dBm. The
-rate of the signal was 18Mbps (36 * 0.5) and the channel frequency was 2412.
-There were no flags or rx-flags defined but there were channel flags defined.
-To parse the channel flags we have to take an additional step:
+We could get the field values using the bracket operator on the returned RTAP 
+object or as mentioned above use the '.' operator. Below, we show both methods.
 
 ```python
->>> rtap.chflags(dR['channel'][1])
-['ism', 'cck']
-```  
+>>> print "Antenna: via '[]' = {0} & '.' = {1}".format(dR1['antenna'],dR1.antenna)
+Antenna: via '[]' = 1 & '.' = 1
+>>> 
+>>> print "Signal Strength: via '[]' = {0} & '.' = {1}".format(dR1['antsignal'],dR1.rss)
+Signal Strength: via '[]' = -75 & '.' = -75
+>>> 
+>>> print "Flags: via '[]' = {0} & '.' = {1}".format(radiotap.flags(dR1['flags']),dR1.flags)
+Flags: via '[]' = [] & '.' = []
+>>>
+>>> print "Data rate: via '[]' = {0} & '.' = {1}".format(dR1['rate'],dR1.rate)
+Data rate: via '[]' = 36 & '.' = 18.0
+```
 
-In this example, the frame is transmitted on 2 GHz ('ism') and it's a CCK 
-channel (see http://www.radiotap.org/defined-fields/Channel for a full listing
-of all channel flags).
+Antenna (the index 0-based of the antenna that read the signal) and Signal strength 
+(strength of the received signal in dBm) are straightforward. Regardless of which 
+method you use, you will get the same result. Looking at flags, notice that by
+using the brackets, additional manipulation was required to get the same result
+as using the '.' operator. This is because dR['flags'] returns the value of 
+the flags field whereas dR.flags returns a list of flags present in the flags
+field. Finally, looking at the data rate, we get two different results. Once
+again this is because the '.' will execute additional parsing for you. Using the
+brackets, dR['rate'] returns the rate in 500kbps IAW the radiotap definition but
+the '.' operator, dR.rate returns the rate in Mbps. As we will see in a later 
+example, dR.rate also handles cases where the data rate is not defined in the 
+rate field but is calculated via the mcs field. 
 
-Before moving on to MPDU parsing, let us look at another raw frame.
+```python
+>>> dR1['channel']
+[2412, 192]
+>>> dR1['channel'][0], radiotap.chflags(dR1['channel'][1])
+(2462, ['ism', 'ofdm'])
+>>>
+>>> dR1.channel, dR1.chflags
+```
+
+Some radiotap fields like channel are multipart. RTAP treats these as a list. In
+the case of the channel (see http://www.radiotap.org/defined-fields/Channel) 
+the first 'subfield' is the frequency in MHz and the second subfield is bitmap.
+You can manually parse this as above or use the '.' operator and let RTAP do the 
+hard work for you. In this example, the frame is transmitted on 2 GHz ('ism') and 
+it's a CCK channel (see http://www.radiotap.org/defined-fields/Channel for a full 
+listing of all channel flags). 
+
+Parsing the frame raw 2, the first thing to note is that there is no rate field 
+defined. That is because we have an 'HT', 802.11n frame as can be seen by the 
+presence of an mcs field. Secondly, instead of a CCK channel, we have a Dyanamic 
+CCK-OFDM channel.  
 
 ```python
 >>> import itamae.mcs as mcs
->>> raw2
-"\x00\x00\x15\x00*H\x08\x00\x00\x00\x9e\t\x80\x04\xc3\x01\x00\x00\x07\x00\x05
-\x88\xc1,\x00\x08\x86;C\xf2h\x949\xe5i\xcf\x0b\xff\xff\xff\xff\xff\xff\x90\x1a
-\x00\x00\xc0\xff\x00\xc0RM\x00 \x0b\x00\x00\x00!\xd0M$6\x15\x8f5;\xaf\xc1\xee_
-\xae\x84 >\xc72\xdaJ-\xb6\xb61\x85+\xa1\xe4\xd1ys\xe9B\xe4\x8b%\xaa\xe0j\xdf\x86
-\x04\xe6\x88\x89g\x11\x85\xb4\x0f\xbcI'Df\xcd\xbf\x83\xf5\x10\xec\x1b\xa1FMD\x81
-\xcb\xbe\xa9qO\xc3\xb8\xecL\xb6[:\xe2h\xd5\x13\xbd\xdd\x94\xd6\xe2\xa6)\xd8\x9b
-\xab"
->>>
 >>> dR2 = rtap.parse(raw2)
 >>> dR2
 {'sz': 21, 'vers': 0, 'antenna': 1, 'rx-flags': 0, 'antsignal': -61, 'flags': 0, 
 'present': ['flags', 'channel', 'antsignal', 'antenna', 'rx-flags', 'mcs'], 
 'mcs': [7, 0, 5], 'channel': [2462, 1152]}
 >>>
->>> rtap.chflags(dR2['channel'][1])
+>>> dR2.chflags
 ['ism', 'dcck']
->>>
+```
+
+To get the rate, we could do some additional parsing. The mcs field is a triple 
+(known, flags, index) see http://www.radiotap.org/defined-fields/MCS. Using the 
+mcsflags_param function with known and flags, returns 'bw' (bandwidth) with a 
+value of 0 and 'gi' (guard interval) with a value of 0. The bandwidth of this 
+signal is 20MHz (0 = 20, 1 = 40, 2 = 20L and 3 = 20U), and the guard interval is 
+long (800ns). Passing these along with our mcs index to the mcs_rate we get a 
+rate of 57.8Mbps. Or we could simply just use the rate property of the RTAP
+object which does the work for us.
+
+```python
 >>> mcsflags = rtap.mcsflags_params(dR2['mcs'][0],dR2['mcs'][1])
 >>> mcsflags
 {'bw': 0, 'gi': 0}
@@ -198,29 +256,21 @@ Before moving on to MPDU parsing, let us look at another raw frame.
 >>> rate = mcs.mcs_rate(index,width,gi)
 >>> rate
 57.8
+>>>
+>> dR2.rate
+>>> 57.8
 ```
 
-The first thing to note is that there is no rate field present. That is because
-we have an 'HT', 802.11n frame as can be seen by the presence of an mcs field.
-(Also note, instead of a CCK channel, we have a Dyanamic CCK-OFDM channel). 
-To get the rate, we have to do some additional parsing. Note that the mcs field
-is a triple 7, 0, 5. These values correspond to known, flags and mcs index 
-respectively (http://www.radiotap.org/defined-fields/MCS). Using the mcsflags_param
-function with known and flags, returns 'bw' (bandwidth) with a value of 0 and 'gi' 
-(guard interval) with a value of 0. The bandwidth of this signal is 20MHz 
-(0 = 20, 1 = 40, 2 = 20L and 3 = 20U), and the guard interval is long (800ns).
-Passing these along with our mcs index to mcs_rate we get a rate of 57.8Mbps.
+So far we have covered the fields you will most likely encounter and shown how
+RTAP does the heavy lifting. There are cases where you may come across additional 
+fields which will require 'manual' parsing. Radiotap provides the functions to do 
+so and can review http://www.radiotap.org or the radiotap source code for help 
+along the way.
 
-Unfortunately, ATT, radiotap does minimal parsing. In most cases, your frames 
-will have the same structure as in the examples above. However, if you come
-across additional fields, radiotap provides functions for parsing each and
-you can review http://www.radiotap.org for help along the way.
-
-But, MPDU does the heavy work for you. Let us return to our orginal frame. 
 To parse the MPDU layer, we need to pass the raw frame at the beginning 
 of layer two. For that, we need to refer back to the size of the radiotap
 frame. Additionally, depending on your interface's firmware the raw frame
-may include the MPUD's FCS. If it is included, it will be set in the radiotap's
+may include the MPDU's FCS. If it is included, it will be set in the radiotap's
 flags field. The MPDU dict exposes the toplevel MPDU fields via the '.' operator. 
 They are framectrl, duration, addr1 ... addr4 (as present), seqctrl, qosctrl,
 crypt and fcs. For convience it also exposes some sublevel fields:
@@ -230,16 +280,7 @@ present and error.
 
 ```python
 >>> import itamae.mpdu as mpdu
->>> raw1
-"\x00\x00\x12\x00.H\x00\x00\x00$l\t\xc0\x00\xb5\x01\x00\x00\x88A0\x00\x04\xa1Q
-\xd0\xdc\x0f\xb04\x95n0\x02\x04\xa1Q\xd0\xdc\x0f\x00<\x00\x00\x07\x08\x00 \n
-\x00\x00\x00\xa9\xe6\xfc\x98  T\xe4\xed\xf5\x01w`\xe76\x18@D.'\xaf:;\xa3\xff
-\xf2\xb8\x88J\xe8\xeeL\x84\xaf\x08$\x1e\x87\xbc\x8e\xa0\x8e\x86\xd1\xce\xa26
-\x84\xa4.\xf5#\xff\xc07`\xd4\xb2\xe4\xaf\n\x01\xcby\x9e4\xb5\xac:0a]\x9d\xfb
-\xbf5X\xb3\xc5-f\xca0\xb77~4\xd5\xbf9\x8d\xf3oZ\xcb\xe6>t\xd35\x01\x1c%\x19
-\x8cD+\xd6\xc7W\x81\xcb\xd6\x97O.\xde\x07\x11"
->>>
->>> hasFCS = rtap.flags_get(dR1['flags'],'fcs')
+>>> hasFCS = 'fcs' in dR1.flags
 >>> hasFCS 
 0
 >>> dM = mpdu.parse(raw1[dR1.sz:],hasFCS)
