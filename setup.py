@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-""" setup.py: install itamae v 0.1.1
+""" setup.py: install itamae v 0.1.2
 
 Copyright (C) 2016  Dale V. Patterson (wraith.wireless@yandex.com)
 

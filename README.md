@@ -1,4 +1,4 @@
-# itamae 0.1.1: 802.11 parser
+# itamae 0.1.2: 802.11 parser
 ![](logo/itamae.png?raw=true)
 
 [![License: GPLv3](https://img.shields.io/pypi/l/itamae.svg)](https://github.com/wraith-wireless/itamae/blob/master/LICENSE)
@@ -50,6 +50,13 @@ overhead in terms of object size because it uses minimal classes. However, unlik
 Scapy, Itamae does not offer socket support (you'll have to bind and sniff your 
 own sockets) and it is not layered. See Section 3: Using for an explanation.
 
+### a. Why the name?
+
+I chose itamae and other sushi related names because there are only so many ways 
+to write dot11. With this naming convention, itamae can coexist with other
+python network frame parsers (if you don't import *). I chose sushi because
+it is the art of 'raw' cheffing. 
+
 ## 2. INSTALLING:
 
 ### a. Requirements
@@ -97,7 +104,7 @@ With the raw socket ready, we can read the raw frames and parse them with Itamae
 >>> raw = sock.recv(MAX_MPDU)
 ```
 
-Before showing how to parse with Itamae, it is best to describe how the RTAP 
+Before describing how to parse with Itamae, it is best to describe how the RTAP 
 object and MPDU object are handled. Each is a wrapper around a dict that exposes 
 certain fields using the '.' operator. And for each, the respective parse 
 function takes a byte stream and returns the appropriate layer dict. Unlike Scapy 
@@ -134,19 +141,47 @@ For the following examples we will be parsing three frames as shown below:
 As can be seen from above the sizes of the frames are 171 bytes, 153 bytes and 38 
 bytes respectively.
 
-Let us begin parsing with radiotap, radiotap.parse() returns a RTAP object. RTAP 
-always exposes three fields: the version, the size and the present list. RTAP will
-also expose certain other commonly found fields via the '.' operator and for all
-others, the bracket(s) operator will work. Parsing raw1 we get:
+Itamae now implements a single function to parse both Radiotap and MPDU:
+
+```python
+>>> import itamae.sushi as sushi
+>>> dR1,DM1,l3,err = sushi.bento(raw1)
+>>> dR1
+{'vers': 0, 'antenna': 1, 'rx-flags': 0, 'antsignal': -75, 'rate': 36, 'flags': 0, 
+'present': ['flags', 'rate', 'channel', 'antsignal', 'antenna', 'rx-flags'], 
+'channel': [2412, 192], 'size': 18}
+>>> dM1
+{'qos': {'tid': 0, 'a-msdu': 0, 'ack-policy': 0, 'eosp': 0, 'txop': 0}, 
+'err': [], 'stripped': 8, 'addr1': '04:a1:51:d0:dc:0f', 
+'seqctrl': {'seqno': 960, 'fragno': 0}, 'addr2': 'b0:34:95:6e:30:02', 
+'addr3': '04:a1:51:d0:dc:0f', 'offset': 34, 'duration': {'dur': 48, 'type': 'vcs'}, 
+'l3-crypt': {'mic': '\xcb\xd6\x97O.\xde\x07\x11', 'rsrv': '\x00', 'pn5': '\x07', 
+'pn1': '\x08', 'pn0': '\x07', 'pn3': '\x00', 'pn2': '\n', 'type': 'ccmp', 
+'pn4': '\x00', 'key-id': {'ext-iv': 1, 'rsrv': 0, 'key-id': 0}}, 
+'framectrl': {'subtype': 8, 'vers': 0, 'type': 2, 
+'flags': {'md': 0, 'mf': 0, 'o': 0, 'r': 0, 'fd': 0, 'pf': 1, 'td': 1, 'pm': 0}}, 
+'present': ['framectrl', 'duration', 'addr1', 'addr2', 'addr3', 'seqctrl', 'qos', 'l3-crypt']}
+>>> l3
+"\xa9\xe6\xfc\x98  T\xe4\xed\xf5\x01w`\xe76\x18@D.'\xaf:;\xa3\xff\xf2\xb8\x88J
+\xe8\xeeL\x84\xaf\x08$\x1e\x87\xbc\x8e\xa0\x8e\x86\xd1\xce\xa26\x84\xa4.\xf5#\xff
+\xc07`\xd4\xb2\xe4\xaf\n\x01\xcby\x9e4\xb5\xac:0a]\x9d\xfb\xbf5X\xb3\xc5-f\xca0
+\xb77~4\xd5\xbf9\x8d\xf3oZ\xcb\xe6>t\xd35\x01\x1c%\x19\x8cD+\xd6\xc7W\x81"
+```
+
+But to better understand how it works, let us begin parsing the Radiotap with 
+rdiotap.parse() which returns a RTAP object. RTAP always exposes three fields: 
+the version, the size and the present list. RTAP will also expose certain other 
+commonly found fields via the '.' operator and for all others, the bracket(s) 
+operator will work. Parsing raw1 we get:
 
 ```python
 >>> import itamae.radiotap as rtap
 >>> dR1 = rtap.parse(raw1)
 >>> dR1
-{'sz': 18, 'vers': 0, 'antenna': 1, 'rx-flags': 0, 'antsignal': -75, 'rate': 36, 
+{'size': 18, 'vers': 0, 'antenna': 1, 'rx-flags': 0, 'antsignal': -75, 'rate': 36, 
 'flags': 0, 'channel': [2412, 192], 'present': ['flags', 'rate', 'channel', 
 'antsignal', 'antenna', 'rx-flags']}
->>> dR1.vers,dR1.sz,dR1.present
+>>> dR1.vers,dR1.size,dR1.present
 (0, 18, ['flags', 'rate', 'channel', 'antsignal', 'antenna', 'rx-flags'])
 >>> 
 ```
@@ -222,7 +257,7 @@ CCK-OFDM channel.
 >>> import itamae.mcs as mcs
 >>> dR2 = rtap.parse(raw2)
 >>> dR2
-{'sz': 21, 'vers': 0, 'antenna': 1, 'rx-flags': 0, 'antsignal': -61, 'flags': 0, 
+{'size': 21, 'vers': 0, 'antenna': 1, 'rx-flags': 0, 'antsignal': -61, 'flags': 0, 
 'present': ['flags', 'channel', 'antsignal', 'antenna', 'rx-flags', 'mcs'], 
 'mcs': [7, 0, 5], 'channel': [2462, 1152]}
 >>>
@@ -283,7 +318,7 @@ present and error.
 >>> hasFCS = 'fcs' in dR1.flags
 >>> hasFCS 
 0
->>> dM = mpdu.parse(raw1[dR1.sz:],hasFCS)
+>>> dM = mpdu.parse(raw1[dR1.size:],hasFCS)
 >>> dM.error
 []
 >>> dM.size, dM.offset, dM.stripped
@@ -319,7 +354,7 @@ bytes parsed (including the radiotap) would be 60 (18 + 34 + 8). If you wanted
 to look at the unparsed bytes i.e. the LLC sub layer, Layer 3 etc you would 
 slice as follows:
  
-```python [dR.sz+dM.offset:-dM.stripped]``` 
+```python [dR.size+dM.offset:-dM.stripped]``` 
 
 Examining the frame control field we see that the type is 2 (Data) and the 
 subtype is 8 (QoS) and that the protected frame flag and to ds flag are set.
@@ -354,7 +389,7 @@ We'll also show using the '.' operator vice bracket(s) operator.
 >>> dR3.flags
 ['fcs']
 >>>
->>> dM3 = mpdu.parse(raw3[dR3.sz:],'fcs' in dR3.flags)
+>>> dM3 = mpdu.parse(raw3[dR3.size:],'fcs' in dR3.flags)
 >>> dM3.size, dM3.offset, dM3.stripped
 (20, 16, 4)
 >>> dM3.fcs
@@ -367,7 +402,7 @@ We'll also show using the '.' operator vice bracket(s) operator.
 >>> dM3.addr1, dM3.addr2
 ('ac:b5:7d:8d:3b:30', '3c:46:d8:7e:0e:dd')
 >>>
->>> dR3.sz + dM3.size == len(raw3)
+>>> dR3.size + dM3.size == len(raw3)
 True
 ```
 

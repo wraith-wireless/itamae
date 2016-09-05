@@ -50,7 +50,7 @@ class RTAP(dict):
      A wrapper for the underlying Radiotap dict with following mandatory key/value
      pairs:
       vers: radiotap version
-      sz: size in bytes of the radiotap header
+      size: size in bytes of the radiotap header
       present: an ordered list of radiotap fields present in the frame
      RTAP will also contain fields as they are found in the frame
 
@@ -58,7 +58,7 @@ class RTAP(dict):
      for example dictRTAP.vers rather than dictRTAP['vers']. Mandatory
      fields are listed below:
       vers: version number,
-      sz: bytes read, and
+      size: bytes read, and
       present: ordered list of present fields
      Attempting to access these fields in a uninstantiated RTAP will result in
      an exception.
@@ -85,6 +85,14 @@ class RTAP(dict):
         return super(RTAP,cls).__new__(cls,dict({} if d is None else d))
 
     @property
+    def error(self):
+        """ returns error message(s) """
+        try:
+            return self['err']
+        except KeyError:
+            return []
+
+    @property
     def vers(self):
         """ returns vers number """
         try:
@@ -93,10 +101,10 @@ class RTAP(dict):
             raise error("RTAP is not instantiated")
 
     @property
-    def sz(self):
+    def size(self):
         """ returns the size in bytes of the radiotap header """
         try:
-            return self['sz']
+            return self['size']
         except KeyError:
             raise error("RTAP is not instantiated")
 
@@ -217,7 +225,7 @@ def parse(f):
     vs = list(struct.unpack_from(ufmt,f,_HDR_SZ_))
 
     # compile fields and values into dict
-    rtap = RTAP({'vers':v,'sz':l,'present':ps})
+    rtap = RTAP({'vers':v,'size':l,'present':ps})
     for (f,lF) in fs:
         if lF == 1: rtap[f] = vs.pop(0)
         else:

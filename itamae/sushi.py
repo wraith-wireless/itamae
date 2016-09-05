@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-""" itamae: 802.11 parsing
+""" sushi: parse Radiotap and MPDU
 
 Copyright (C) 2016  Dale V. Patterson (wraith.wireless@yandex.com)
 
@@ -19,44 +19,37 @@ are permitted provided that the following conditions are met:
    contributors may be used to endorse or promote products derived from this
    software without specific prior written permission.
 
-Defines functions to parse raw 802.11 captures i.e. packed bytes.
-
-
-Also defines constansts for PyPI packaging.
-Partial support of 802.11-2012
-Currently Supported
-802.11a\b\g
-
-Partially Supported
-802.11n
-
-Not Supported
-802.11s\y\ac\ad\af
-
-Requires:
- linux (3.x or 4.x kernel)
- Not tested on Windows or Mac OS
- Python 2.7
-
-WARNING: Be careful if importing * (all)
+Parses raw 802.11 captures i.e. packed bytes. Raw bytes can be in the form of 
+a string or memoryview
 
 """
-__name__ = 'itamae'
+__name__ = 'sushi'
 __license__ = 'GPL v3.0'
-__version__ = '0.1.2'
-__date__ = 'August 2016'
+__version__ = '0.0.1'
+__date__ = 'September 2016'
 __author__ = 'Dale Patterson'
 __maintainer__ = 'Dale Patterson'
 __email__ = 'wraith.wireless@yandex.com'
 __status__ = 'Production'
 
-# for out setup.py
-version = __version__
+import itamae.radiotap as rtap
+import itamae.mpdu as mpdu
 
-long_desc = """
-Itamae is a simple yet robust raw 802.11 frame parser. It is designed to be easy
-and fast to use providing all 802.11 MPDU fields/values and radiotap fields/values.
-
-Itamae is not designed to replace Scapy but is meant to be used when speed of
-parsing is important.
-"""
+def bento(f):
+    """
+     parses raw frame 
+     :param f: raw bytes (string or memoryview) of the frame
+     :returns: tuple t = (Radiotap dict, MPDU dict, remaining bytes,error)
+      where error is None if no non-recoverable error(s) occurred or a string
+      describing the error
+    """
+    dR = rtap.RTAP() # make an empty rtap dict
+    dM = mpdu.MPDU() # & an empty mpdu dict
+    err = None
+    try:
+        dR = rtap.parse(f)
+        dM = mpdu.parse(f[dR.size:],'fcs' in dR.flags)
+    except (rtap.error,mpdu.error) as e:
+        err = e
+    
+    return dR,dM,f[dR.size+dM.offset:-dM.stripped],err

@@ -232,10 +232,10 @@ class MPDU(dict):
     def crypt(self): return self['l3-crypt'] if 'l3-crypt' in self else None
     @property
     def fixed_params(self):
-        return self['fixed-params'] if 'fixed-params' in self else None
+        return self['fixed-params'] if 'fixed-params' in self else []
     @property
     def info_els(self):
-        return self['info-elements'] if 'info-elements' in self else None
+        return self['info-elements'] if 'info-elements' in self else []
 
     def getie(self,ies):
         """
@@ -284,6 +284,7 @@ def parse(f,hasFCS=False):
             f = f[:-4]
             m['stripped'] += 4
     except (struct.error,ValueError) as e:
+        if len(f) <= 0: return {'offset':0}
         raise error("Failed to unpack: {0}".format(e))
     else:
         # handle frame types separately (return on FT_RSRV

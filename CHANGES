@@ -7,3 +7,7 @@ v 0.1.0
 v 0.1.1 (first release)
  o RTAP is more user friendly requiring less 'manual' parsing of fields
   - exposes via '.' most common found fields
+v 0.1.2
+ o added sushi.py which combines Radiotap, MPDU parsing
+  into one function
+ o changed RTAP.sz to RTAP.size for consistency

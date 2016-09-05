@@ -14,7 +14,12 @@ Standards:
   8) do we extend for 802.2 LLC and layer 3 IP parsing?
   9) default MPDU() does not create err field
  10) allow for invalid values in MPDU (could help identify fuzzing attempts)
- 11) avoid passing strings everywhere. could we use a buffer?
+ 11) Allows for the use of a memoryview instead of a raw string:
+  raw1 = "\x00...\0xx"
+  buffer = memoryview(raw1)
+  dR = rtap.parse(buffer)
+  dM = mpdu.parse(buffer[dR.sz:],False)
+  this works but is actually slower
  12) consider allowing for building of packets
  13) I cannot remember why I use '@' format byte order specifier in radiotap and
   '=' in mpdu
