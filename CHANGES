@@ -10,5 +10,3 @@ v 0.1.1 (first release)
 v 0.1.2
  o added sushi.py which combines Radiotap, MPDU parsing into one function bento
  o changed RTAP.sz to RTAP.size for consistency
- o added a private _mpdu file to consolidate private fcts/constanst in mpdu easing
-  burden of a large mpdu file interspersed with public and private helpers
