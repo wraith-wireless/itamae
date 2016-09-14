@@ -1,13 +1,7 @@
-Standards:
-  1) Should we add support for AVS, Prism headers?
   2) radiotap: ensure data pad is handled for atheros cards (any others?)
   3) mpdu, fully parse
      o control wrapper
      o +htc
-     o info-elements
-      - RSN Std 8.4.2.27, #48
-      - TIM Info-Element #5 from beacons could be useful
-      - parse timing advance
      o support a-msdu etc
   6) 802.1X parsing?
   7) other 802.11 standards i.e mesh
@@ -23,3 +17,77 @@ Standards:
  12) consider allowing for building of packets
  13) I cannot remember why I use '@' format byte order specifier in radiotap and
   '=' in mpdu
+ 19) mgmt frame info-elements
+   o for supported rates in info-elements, see Table 8-55 regarding BSS
+  membership selector
+   o test/confirm
+    - _eiderp_
+    - _eidsched_
+    - qosinfoap and qosinfosta
+   o TIM needs further parsing
+   o TPC Report, link-margin. Is it processed correctly
+   o need a frame with Supported Channels element to look at IOT parse it
+   o rehit after taking care of 'easier' elements
+     - Measurement Request Element
+     - Measurement Report Element
+     - IBSS DFS element
+     - RSN element
+     - Extended Capabilities element
+     - country element
+     - request element
+     - edca parameter set
+     - TPSEC element
+     - TCLAS element
+     - AP Channel Report element
+     - Neighbor report element
+     - Msmt Pilot Transmission element
+     - BSS Available Admission Capacity
+     - RM Enabled Capabilities
+     - Mult. BSSID element
+     - FTE
+     - RIC Descripto element
+     - DSE Registered location
+     - MGMT MIC element
+     - HT capabilities element
+     - HT Operation element
+     - 20/40 BSS Intolerant Ch Report
+     - Time Advertisement
+     - Event Request & Reprt
+     - Diagnostic Request & Report
+     - Location Parameters
+     - SSID List
+     - Multiple BSSID index
+     - FMS Descriptor
+     - FMS Request & Response
+     - QoS Traffic Capability
+     - TFS Request & Response
+     - TIM Broadcasat Response
+     - Channel Usage
+     - Time Zone
+     - DMS Request & Response
+     - U-APSD Coexistence
+     - Interworking
+     - Advertisement Protocol
+     - QoS Map Set
+     - Roaming Consortium
+     - Mesh ID see 13.2.2
+     - Mesh Link metric
+     - Mesh Peering Mgmt
+     - Beacon timing element
+     - MCCAOP Setup Request & reply
+     - MACCAOP Adevertisement
+     - MACCOAP Teardown
+     - PREQ, PREP & PERR
+     - PXU
+     - Auth. Mesh Peering Exchange
+     - MIC
+   o for vendor specific info-elements is there info out there on the most common
+    or some other methods for determining how for example wireshark parses these
+   o for BSS Average Access delay & BSS AC Average Access dealy (Std 8.4.2.41 pg
+    586) write a func to provide ranges i.e. n ==> 2 <= n <= 14
+   o For RDE, see 8.4.1.9, code in values of status code
+   o for Supported operating classes see 10.10.1 and 10.11.9.1 for info on
+    operating clases element
+   o for Nontransmitted BSSID capability sett 8.4.2.48, 10.11.14 & 10.1.3.6
+   o twos complement signed integer value for interference level field in
+     Collocated Interference Report element
