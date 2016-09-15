@@ -443,6 +443,8 @@ with (-) are not included in pip installs or PyPI downloads
     + \_\_init\_\_.py     initialize itamae module
     + radiotap.py         parse radiotap
     + mpdu.py             parse the MPDU of layer 2
+    + _mpdu.py            private helper fcts for mpdu
+    + ieee80211           definitions as found in the Standard
     + dot11u.py           constants for 802.11u
     + mcs.py              mcs index, modulation and coding
     + bits.py            bitmask related functions

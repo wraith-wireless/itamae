@@ -10,3 +10,8 @@ v 0.1.1 (first release)
 v 0.1.2
  o added sushi.py which combines Radiotap, MPDU parsing into one function bento
  o changed RTAP.sz to RTAP.size for consistency
+ o restructured mpdu.py IOT alleviate cluttering of definitions, parsing helpers
+  etc in one file
+  - mpdu contains error, MPDU class and parse function
+  - moved public constants to file ieee80211.py
+  - moved private helper functions to _mpdu.py

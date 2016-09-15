@@ -32,7 +32,7 @@ __date__ = 'July 2016'
 __author__ = 'Dale Patterson'
 __maintainer__ = 'Dale Patterson'
 __email__ = 'wraith.wireless@yandex.com'
-__status__ = 'Development'
+__status__ = 'Production'
 
 # modulation and coding rate Table 20-30 thru 20-35 Std (these repeat 0-7, 8-15 etc)
 MCS_HT_INDEX = ["BPSK 1/2",

@@ -83,6 +83,9 @@
      - MIC
    o for vendor specific info-elements is there info out there on the most common
     or some other methods for determining how for example wireshark parses these
+    looks like there is some further consistency from wireshark reviews
+    elementid (221), length, data where data is
+     OUI, followed by a 1 byte Vendor OUI type (0x04 = WPS for Microsoft vendors
    o for BSS Average Access delay & BSS AC Average Access dealy (Std 8.4.2.41 pg
     586) write a func to provide ranges i.e. n ==> 2 <= n <= 14
    o For RDE, see 8.4.1.9, code in values of status code
