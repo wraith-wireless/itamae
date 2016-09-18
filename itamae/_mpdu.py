@@ -431,7 +431,7 @@ def _parseie_(eid,info):
      parse information elements (exluding vendor specific)
     :param eid: element id
     :param info: packed string of the information field
-    :returns: a tuple (element id,parse info field)
+    :returns: a tuple (element id,parsed info field)
     """
     try:
         if eid == std.EID_SSID: # Std 8.4.2.2
@@ -472,7 +472,24 @@ def _parseie_(eid,info):
         elif eid == std.EID_IBSS: # Std 8.4.2.8
             # single element ATIM Window
             info = struct.unpack_from('=H',info)[0]
-        elif eid == std.EID_COUNTRY: pass # Std 8.4.2.10
+        elif eid == std.EID_COUNTRY: # Std 8.4.2.10
+            # a pad bit is appended if the field length is not divisible by two
+            # Country|Ch Num|Num Chs|Max Tx|<pad>
+            #       3|      1|     1|     1|    1
+            # the fields Ch Num, Num Chs and Max Tx are repeating
+
+            # see Std, we assume all are unsigned ints for now & parse
+            # out the operating triplet
+            pad = None
+            trips = []
+            cstr = info[:3]
+            for i in range(0,len(info),3):
+                try:
+                    trips.append(struct.unpack_from('=3B',info,i))
+                except struct.error:
+                    pad = struct.unpack_from('=B',info,i)
+            info = {'country':cstr,'op-tuples':trips}
+            if pad: info['pad'] = pad
         elif eid == std.EID_HOP_PARAMS: # Std 8.4.2.11
             # 2 elements
             rad,num = struct.unpack_from('=BB',info)
@@ -494,14 +511,31 @@ def _parseie_(eid,info):
             cnt,util,cap = struct.unpack_from('=HBH',info)
             info = {'sta-cnt':cnt,'ch-util':util,'avail-cap':cap}
         elif eid == std.EID_EDCA: # Std 8.4.2.31
-            # 18 byte, 6 elements
-            #qos,rsrv,be,bk,vi,vo = struct.unpack_from('=BB',info)
-            pass
+            # QoS|Rsrv|BE|BK|VI|VO
+            #   1|   1| 4| 4| 4| 4
+            # and each BE,BK,VI,VO is
+            #  ACI/AIFSN|EC Min/Max|TXOP Lim
+            #          1|         1|       2
+            vs = struct.unpack_from('=2B2BH2BH2BH2BH',info)
+            info = {'qos-info':vs[0],
+                    'rsrv':vs[1],
+                    'ac-be':{'aci':_eidedcaaci_(vs[2]),
+                             'ecw':_eidedcaecw_(vs[3]),
+                             'txop-lim':vs[4]},
+                    'ac-bk':{'aci':_eidedcaaci_(vs[5]),
+                             'ecw':_eidedcaecw_(vs[6]),
+                             'txop-lim':vs[7]},
+                    'ac-vi':{'aci':_eidedcaaci_(vs[8]),
+                             'ecw':_eidedcaecw_(vs[9]),
+                             'txop-lim':vs[10]},
+                    'ac-vo':{'aci':_eidedcaaci_(vs[11]),
+                             'ecw':_eidedcaecw_(vs[12]),
+                             'txop-lim':vs[13]}}
         elif eid == std.EID_TSPEC: # Std 8.4.2.32
             pass
         elif eid == std.EID_TCLAS: # Std 8.4.2.33
             pass
-        elif eid == std.EID_SCHED: # Std 8,4,2,36
+        elif eid == std.EID_SCHED: # Std 8.4.2.36
             # 12 bytes, 4 element
             sinfo,start,ser_int,spec_int = struct.unpack_from('=HIII',info)
             info = {'sched-info':_eidsched_(sinfo),
@@ -510,19 +544,27 @@ def _parseie_(eid,info):
                     'spec-int':spec_int}
         elif eid == std.EID_CHALLENGE: pass # Std 8.4.2.9
         elif eid == std.EID_PWR_CONSTRAINT: # Std 8.4.2.16
-            # in dBm
-            info = struct.unpack_from('=B',info)[0]
+            info = struct.unpack_from('=B',info)[0] # in dBm
         elif eid == std.EID_PWR_CAPABILITY: # Std 8.4.2.17
-            # in dBm
             mn,mx = struct.unpack_from('=BB',info)
-            info = {'min':mn,'max':mx}
+            info = {'min':mn,'max':mx}             # in dBm
         elif eid == std.EID_TPC_REQ: pass # Std 8.4.2.18 (a flag w/ no info
         elif eid == std.EID_TPC_RPT: # Std 8.4.2.19
             # 2 element, tx pwr in dBm & twos-complement dBm
             # see also 8,3,3,2, 8.3.3.10 8.5.2.5 & 19.8.6
             pwr,link = struct.unpack_from('=Bb',info)
             info = {'tx-power':pwr,'link-margin':link}
-        elif eid == std.EID_CHANNELS: pass # Std 8.4.2.20
+        elif eid == std.EID_CHANNELS: # Std 8.4.2.20
+            # Repeating: First Ch Num|Num channels
+            #                       1|           1
+            # return as a list of tuples
+            chs = []
+            for i in range(0,len(info),2):
+                try:
+                    chs.append(struct.unpack_from('=2B',info,i))
+                except struct.error:
+                    break
+            info = chs
         elif eid == std.EID_CH_SWITCH: # Std 8.4.2.21
             # 3 element
             mode,new,cnt = struct.unpack_from('=BBB',info)
@@ -546,22 +588,48 @@ def _parseie_(eid,info):
         elif eid == std.EID_TCLAS_PRO: # Std 8.4.2.35
             info = struct.unpack_from('=B',info)[0]
         elif eid == std.EID_HT_CAP: # Std 8.4.2.58
-            pass
+            # 6 elements 2|1|16|2|4|1
+            hti,ampdu = struct.unpack_from('=HB',info)
+            mcs = info[3:19]
+            hte,bf,asel = struct.unpack_from('=HIB',info,19)
+            info = {'ht-info':_eidhtcaphti_(hti),
+                    'ampdu-param':_eidhtcapampdu_(ampdu),
+                    'mcs-set':mcs, # see Std Fig 8-251
+                    'ht-ext-cap':_eidhtcaphte_(hte),
+                    'tx-beamform':_eidhtcaptxbf_(bf),
+                    'asel-cap':_eidhtcapasel_(asel)}
         elif eid == std.EID_QOS_CAP: # Std 8.4.2.37, 8.4.1.17
             # 1 byte 1 element. Requires further parsing to get subfields
             info = struct.unpack_from('=B',info)[0]
         elif eid == std.EID_RSN: # Std 8.4.2.27
             pass
         elif eid == std.EID_AP_CH_RPT: # Std 8.4.2.38
-            pass
+            # min 1 octet followed by variable list of channels
+            opclass = struct.unpack_from('=B',info)[0]
+            info = {'op-class':opclass,
+                    'ch-list':[struct.unpack('=B',ch)[0] for ch in info[1:]]}
         elif eid == std.EID_NEIGHBOR_RPT: # Std 8.4.2.39
-            pass
+            # BSSID|BSSID INFO|OP CLASS|CH NUM|PHY TYPE|SUB ELS
+            #     6|         4|       1|     1|       1| var
+            binfo,op,ch,phy, = struct.unpack_from('=I3B',info,6)
+            var = info[struct.calcsize('=6BI3B'):]
+            info = {'bssid':_hwaddr_(struct.unpack_from('=6B',info)),
+                    'bssid-info':_eidneighrptinfo_(binfo),
+                    'op-class':op,
+                    'ch-num':ch,
+                    'phy':phy}
+            if var:
+                opt = []
+                while len(var):
+                    sid,slen,el = _parseinfoelsubel_(var)
+                    var = var[2+slen] # adjust 2 octets for sid, slen and var for data
+                    opt.append((sid,slen,el))
+                info['opt'] = opt
         elif eid == std.EID_RCPI: # Std 8.4.2.40
             info = struct.unpack_from('=B',info)[0]
         elif eid == std.EID_MDE: # Std 84.2.49
             mdid,ft = struct.unpack_from('=HB',info)
-            info = {'mdid':mdid,
-                    'ft-cap-pol':_eidftcappol_(ft)}
+            info = {'mdid':mdid,'ft-cap-pol':_eidftcappol_(ft)}
         elif eid == std.EID_FTE: # Std 8.4.2.50
             pass
         elif eid == std.EID_TIE: # Std 8.4.2.51
@@ -581,11 +649,19 @@ def _parseie_(eid,info):
         elif eid == std.EID_EXT_CH_SWITCH: # Std 8.4.2.55
             # 4 octect, 4 element
             mode,opclass,ch,cnt = struct.unpack_from('=4B',info)
-            info = {
-                'switch-mode':mode,'op-class':opclass,'new-ch':ch,'switch-cnt':cnt
-            }
+            info = {'switch-mode':mode,
+                    'op-class':opclass,
+                    'new-ch':ch,
+                    'switch-cnt':cnt}
         elif eid == std.EID_HT_OP: # Std 8.4.2.59
-            pass
+            # Pri Ch|HT OP Info|MCS Set
+            #      1|         5|     16
+            # The HT OP info can be further divided into 1|2|2
+            pri,htop1,htop2,htop3 = struct.unpack_from('=BBHH',info)
+            mcs = info[-16:]
+            info = {'pri-ch':pri,
+                    'ht-op-info':_eidhtopinfo_(htop1,htop2,htop3),
+                    'mcs-set':mcs}
         elif eid == std.EID_SEC_CH_OFFSET: # 8.4.2.22
             info = struct.unpack_from('=B',info)[0]
         elif eid == std.EID_BSS_AVG_DELAY: # Std 8.4.2.41
@@ -850,7 +926,18 @@ def _parseie_(eid,info):
         raise EnvironmentError(eid,e)
     return eid,info
 
-# SUUPORTED RATES/EXTENDED RATES Std 8.4.2.3 and 8.4.2.15
+# INFORMATION ELEMENT SUBELEMENT Std Fig 8-402
+# Subelement ID|Length|Data
+#             1|     1| var
+def _parseinfoelsubel_(info):
+    """
+     parse a variable length info element sub element
+     :param info: packed string, next element starts at index 0
+    """
+    sid,slen = struct.unpack_from('=2B',info)
+    return sid,slen,info[struct.calcsize('=2b')+slen:]
+
+# SUPPORTED RATES/EXTENDED RATES Std 8.4.2.3 and 8.4.2.15
 # Std 6.5.5.2 table of rates not contained in the BSSBasicRateSet
 # Reading 8.4.2.3 directs to the table in 6.5.5.2 which (see below) relates
 # the number in bits 0-6 to 0.5 * times that number which is the same thing
@@ -952,63 +1039,6 @@ def _eidbssmaxidle_(v):
     return {'pro-keep-alive':bits.leastx(_EID_BSS_MAX_IDLE_PRO_,v),
             'rsrv':bits.mostx(_EID_BSS_MAX_IDLE_PRO_,v)}
 
-# WNM Sleep Mode constants See Std 10.2.1.18
-# Action type definitions Std Table 8-165
-std.EID_WNM_SLEEP_ACTION_ENTER = 0
-std.EID_WNM_SLEEP_ACTION_EXIT  = 1
-# NOTE 2-255 are reserved
-
-# Response Status definitions Std Table 8-166
-std.EID_WNM_SLEEP_STATUS_ACCEPT   = 0
-std.EID_WNM_SLEEP_STATUS_UPDATE   = 1
-std.EID_WNM_SLEEP_STATUS_DENIED   = 2 # AP cannot perform request
-std.EID_WNM_SLEEP_STATUS_TEMP     = 3 # temporary, try again later
-std.EID_WNM_SLEEP_STATUS_EXPIRE   = 4 # key is pending expiration
-std.EID_WNM_SLEEP_STATUS_SERVICES = 5 # STA has other WNM services in use
-# NOTE -255 are reserved
-
-# Expedited Bandwith Request Precedence level definitions Std Table 8-176
-std.EID_EXPEDITED_BW_REQ_CALL  = 16
-std.EID_EXPEDITED_BW_REQ_PUB   = 17
-std.EID_EXPEDITED_BW_REQ_PRIV  = 18
-std.EID_EXPEDITED_BW_REQ_LVL_A = 19
-std.EID_EXPEDITED_BW_REQ_LVL_B = 20
-std.EID_EXPEDITED_BW_REQ_LVL_0 = 21
-std.EID_EXPEDITED_BW_REQ_LVL_1 = 22
-std.EID_EXPEDITED_BW_REQ_LVL_2 = 23
-std.EID_EXPEDITED_BW_REQ_LVL_3 = 24
-std.EID_EXPEDITED_BW_REQ_LVL_4 = 25
-# NOTE 0-15 and 26-255 are reserved
-
-# Mesh configuration element definitions Std 8.4.2.100
-# Std Table 8-177
-std.EID_MESH_CONFIG_PATH_PROTO_HYBRID =   1
-std.EID_MESH_CONFIG_PATH_PROTO_VENDOR = 255
-# NOTE: 0, 2-254 are reserved
-
-# Std Table 8-178
-std.EID_MESH_CONFIG_PATH_METRIC_AIRTIME =   1
-std.EID_MESH_CONFIG_PATH_METRIC_VENDOR  = 255
-# NOTE: 0, 2-254 are reserved
-
-# Std Table 8-179
-std.EID_MESH_CONFIG_CONTROL_MODE_DEFAULT =   0
-std.EID_MESH_CONFIG_CONTROL_MODE_SIGNAL  =   1
-std.EID_MESH_CONFIG_CONTROL_MODE_VENDOR  = 255
-# NOTE 2-254 are reserved
-
-# Std Table 8-180
-std.EID_MESH_CONFIG_SYNC_MODE_NEIGHBOR =   1
-std.EID_MESH_CONFIG_SYNC_MODE_VENDOR   = 255
-# NOTE: 0, 2-254 are reserved
-
-# Std Table 8-181
-std.EID_MESH_CONFIG_AUTH_PROTO_NONE   =   0
-std.EID_MESH_CONFIG_AUTH_PROTO_SAE    =   1
-std.EID_MESH_CONFIG_AUTH_PROTO_8021X  =   2
-std.EID_MESH_CONFIG_AUTH_PROTO_VENDOR = 255
-# NOTE: 3-254 are reserved
-
 # Mesh formation info Std Figure 8-364
 # Conneected Mesh|Peerings|Connected AS
 #              BO|  B1-B6 |B7
@@ -1040,6 +1070,240 @@ def _eidmeshchswitch_(v):
     cs = bits.bitmask_list(_EID_MESH_CH_SWITCH_FLAGS_,v)
     cs['rsrv'] = bits.mostx(_EID_MESH_CH_SWITCH_FLAGS_RSRV_START_,v)
     return cs
+
+# EDCA Parameter Set -> ACI/AIFSN definition Std Fig 8-193
+_EID_EDCA_ACI_ = {'acm':(1<<4),'rsrv':(1<<7)}
+_EID_EDCA_ACM_START_ = 4
+_EID_EDCA_ACI_START_ = 5
+_EID_EDCA_ACI_LEN_   = 2
+def _eidedcaaci_(v):
+    """ :returns: parsed aci/aifsn field """
+    aa = bits.bitmask_list(_EID_EDCA_ACI_,v)
+    aa['aifsn'] = bits.leastx(_EID_EDCA_ACM_START_,v)
+    aa['aci'] = bits.midx(_EID_EDCA_ACI_START_,_EID_EDCA_ACI_LEN_,2)
+    return aa
+
+# EDCA Parameter Set -> ECW Min/Max Std Fig 8-195
+_EID_EDCA_ECW_SPLIT_ = 4
+def _eidedcaecw_(v):
+    """ :returns: parsed ECWMin/ECWMax field """
+    return {'min':bits.leastx(_EID_EDCA_ECW_SPLIT_,v),
+            'max':bits.mostx(_EID_EDCA_ECW_SPLIT_,v)}
+
+#### HT CAPABILITIES Std 8.4.2.58
+
+# HT Capabilities Info field Std Fig 8-249
+# octest are defined as 1|1|2|1|1|1|1|2|1|1|1|1|1|1 see Fig 8-249 for names
+# See also Std Table 8-124 for definition of sub fields
+_EID_HT_CAP_HTI_ = {'ldpc-cap':(1<<0),'ch-width-set':(1<<1),'ht-greenfield':(1<<4),
+                    'short-gi-20':(1<<5),'short-gi-40':(1<<6),'tx-stbc':(1<<7),
+                    'ht-delay-back':(1<<10),'max-amsdu':(1<<11),'dsss-cck-mod':(1<<12),
+                    'rsrv':(1<<13),'40-intolerant':(1<<14),'lsig-txop-pro':(1<<15)}
+_EID_HT_CAP_HTI_SM_PWR_START_  = 2
+_EID_HT_CAP_HTI_SM_PWR_LEN_    = 2
+_EID_HT_CAP_HTI_RX_STBC_START_ = 8
+_EID_HT_CAP_HTI_RX_STBC_LEN_   = 2
+def _eidhtcaphti_(v):
+    """ :returns: parse ht capabilities info field """
+    hti = bits.bitmask_list(_EID_HT_CAP_HTI_,v)
+    hti['sm-pwr-save'] = bits.midx(_EID_HT_CAP_HTI_SM_PWR_START_,
+                                   _EID_HT_CAP_HTI_SM_PWR_LEN_,
+                                   v)
+    hti['rx-stbc'] = bits.midx(_EID_HT_CAP_HTI_RX_STBC_START_,
+                               _EID_HT_CAP_HTI_RX_STBC_LEN_,
+                               v)
+    return hti
+
+# A-MPDU Parameters field Std Fig 8-250
+# Max Length|Min Start Spacing|Reserved
+#      BO-B1|            B2-B4|   B5-B7
+_EID_HT_CAP_AMPDU_MIN_START_  = 2
+_EID_HT_CAP_AMPDU_MIN_LEN_    = 3
+_EID_HT_CAP_AMPDU_RSRV_START_ = 5
+def _eidhtcapampdu_(v):
+    """ :returns: parsed ampdu parameters field """
+    return {'max-length':bits.leastx(_EID_HT_CAP_AMPDU_MIN_START_,v),
+            'min-spacing':bits.midx(_EID_HT_CAP_AMPDU_MIN_START_,
+                                    _EID_HT_CAP_AMPDU_MIN_LEN_,
+                                    v),
+            'rsrv':bits.mostx(_EID_HT_CAP_AMPDU_RSRV_START_,v)}
+
+# HT Extended Capabilities Field Std Fig 8-252
+# PCO|PCO Transit|Reserved|MCS Feedback|+HTC Supp|RD Resond|Reseved
+#  B0|      B1-B2|   B3-B7|       B8-B9|      B10|      B11|B12-B15
+_EID_HT_CAP_HTE_ = {'pco':(1<<0),'+htc':(1<<10),'rd-resp':(1<<11)}
+_EID_HT_CAP_PCO_START_   =  1
+_EID_HT_CAP_PCO_LEN_     =  2
+_EID_HT_CAP_RSRV1_START_ =  3
+_EID_HT_CAP_RSRV1_LEN_   =  7
+_EID_HT_CAP_MCS_START_   =  8
+_EID_HT_CAP_MCS_LEN_     =  2
+_EID_HT_CAP_RSRV2_START_ = 12
+def _eidhtcaphte_(v):
+    """ :returns parsed ht extended capabilities """
+    hte = bits.bitmask_list(_EID_HT_CAP_HTE_,v)
+    hte['pco-transit'] = bits.midx(_EID_HT_CAP_PCO_START_,_EID_HT_CAP_PCO_LEN_,v)
+    hte['rsrv-1'] = bits.midx(_EID_HT_CAP_RSRV1_START_,_EID_HT_CAP_RSRV1_LEN_,v)
+    hte['mcs-feedback'] = bits.midx(_EID_HT_CAP_MCS_START_,_EID_HT_CAP_MCS_LEN_,v)
+    hte['rsrv-2'] = bits.mostx(_EID_HT_CAP_RSRV2_START_,v)
+    return hte
+
+# Transmit Beamforming Capabilities Std Fig 8-253
+_EID_HT_CAP_TX_BF_ = {
+    'rx-cap':(1<<0),        # implicit tx beamforming receiving capable
+    'rx-stag-sound':(1<<1), # rx staggered sounding capable
+    'tx-stag-sound':(1<<2), # tx staggered sounding capable
+    'rx-ndp':(1<<3),        # rx ndp capable
+    'tx-ndp':(1<<4),        # tx ndp capable
+    'tx-bf-cap':(1<<5),     # implicit tx beamforming capable
+    'csi-tx':(1<<8),        # explicit tx beamforming capable
+    'noncompressed':(1<<9), # non-compressed steering capable
+    'compressed':(1<<10)    # compressed steering capable
+}
+_EID_HT_CAP_SUB_LEN_ = 2 # all but reserved are of len 2
+_EID_HT_CAP_TX_BF_CALIB_START_       =  6
+_EID_HT_CAP_TX_BF_CSI_FEED_START_    = 11
+_EID_HT_CAP_TX_BF_NONCOMP_START_     = 13
+_EID_HT_CAP_TX_BF_COMP_START_        = 15
+_EID_HT_CAP_TX_BF_MIN_GRP_START_     = 17
+_EID_HT_CAP_TX_BF_CSI_ANT_START_     = 19
+_EID_HT_CAP_TX_BF_NONCOMP_ANT_START_ = 21
+_EID_HT_CAP_TX_BF_COMP_ANT_START_    = 23
+_EID_HT_CAP_TX_BF_CSI_MAX_NUM_START_ = 25
+_EID_HT_CAP_TX_BF_CH_EST_CAP_START_  = 27
+_EID_HT_CAP_TX_BF_RSRV_START_        = 29
+def _eidhtcaptxbf_(v):
+    """ :returns: parsed tx beamforming capabilities field """
+    txbf = bits.bitmask_list(_EID_HT_CAP_TX_BF_,v)
+    txbf['calibration'] = bits.midx(_EID_HT_CAP_TX_BF_CALIB_START_,
+                                    _EID_HT_CAP_SUB_LEN_,
+                                    v)
+    txbf['tx-csi-feedback'] = bits.midx(_EID_HT_CAP_TX_BF_CSI_FEED_START_,
+                                        _EID_HT_CAP_SUB_LEN_,
+                                        v)
+    txbf['noncompressed-feedback'] = bits.midx(_EID_HT_CAP_TX_BF_NONCOMP_START_,
+                                               _EID_HT_CAP_SUB_LEN_,
+                                                v)
+    txbf['compressed-feedback'] = bits.midx(_EID_HT_CAP_TX_BF_COMP_START_,
+                                            _EID_HT_CAP_SUB_LEN_,
+                                            v)
+    txbf['min-grouping'] = bits.midx(_EID_HT_CAP_TX_BF_MIN_GRP_START_,
+                                     _EID_HT_CAP_SUB_LEN_,
+                                     v)
+    txbf['csi-antenna'] = bits.midx(_EID_HT_CAP_TX_BF_CSI_ANT_START_,
+                                     _EID_HT_CAP_SUB_LEN_,
+                                     v)
+    txbf['noncomp-antenna'] = bits.midx(_EID_HT_CAP_TX_BF_NONCOMP_ANT_START_,
+                                        _EID_HT_CAP_SUB_LEN_,
+                                        v)
+    txbf['comp-antenna'] = bits.midx(_EID_HT_CAP_TX_BF_COMP_ANT_START_,
+                                     _EID_HT_CAP_SUB_LEN_,
+                                     v)
+    txbf['csi-max-rows'] = bits.midx(_EID_HT_CAP_TX_BF_CSI_MAX_NUM_START_,
+                                      _EID_HT_CAP_SUB_LEN_,
+                                      v)
+    txbf['ch-est-cap'] = bits.midx(_EID_HT_CAP_TX_BF_CH_EST_CAP_START_,
+                                   _EID_HT_CAP_SUB_LEN_,
+                                   v)
+    txbf['rsrv'] = bits.mostx(_EID_HT_CAP_TX_BF_RSRV_START_,v)
+    return txbf
+
+# Transmit Beamforming Capabilities Std Fig 8-254
+_EID_HT_CAP_ASEL_ = {'ant-sel':(1<<0),       # antenna selection capable
+                     'csi-asel-cap':(1<<1),  # explicit cs feedback based tx ASEL capable
+                     'ant-asel-cap':(1<<2),  # antenna indices feedback based tx ASEL capable
+                     'csi-cap':(1<<3),       # explicit csi feedback capable
+                     'ant-cap':(1<<4),       # antenna indices feedback capable
+                     'recv-asel-cap':(1<<5), # receive ASEL capable
+                     'tx-ppdu-cap':(1<<6),   # tx sounding PPDUs capable
+                     'rsrv':(1<<7)}
+def _eidhtcapasel_(v):
+    """ :returns: parsed ASEL capability field """
+    return bits.bitmask_list(_EID_HT_CAP_ASEL_,v)
+
+# QoS Capability Std 8.4.1.17
+# two meanings dependent on if AP transmitted frame or non-Ap transmitted frame
+# Sent by AP Std Fig 8-51
+_EID_QOS_CAP_AP_ = {'q-ack':(1<<4),'q-req':(1<<5),'txop-req':(1<<6),'rsrv':(1<<7)}
+_EID_QOS_CAP_AP_DIVIDER_ = 4
+# Sent by non-AP
+_EID_QOS_CAP_NON_AP_ = {'ac-vo':(1<<0),'ac-vi':(1<<1),'ac-bk':(1<<2),'ac-be':(1<<3),
+                        'q-ack':(1<<4),'more-data':(1<<7)}
+_EID_QOS_CAP_NON_AP_MAX_SP_START_ = 5
+_EID_QOS_CAP_NON_AP_MAX_SP_LEN_   = 2
+def _eidqoscap_(v,ap=True):
+    """ :returns: parsed qos capability info field based on traffic is from ap """
+    if ap:
+        qc = bits.bitmask_list(_EID_QOS_CAP_AP_,v)
+        qc['edca-update-cnt'] = bits.leastx(_EID_QOS_CAP_AP_DIVIDER_,v)
+    else:
+        qc = bits.bitmask_list(_EID_QOS_CAP_NON_AP_,v)
+        qc['max-sp-len'] = bits.midx(_EID_QOS_CAP_NON_AP_MAX_SP_START_,
+                                     _EID_QOS_CAP_NON_AP_MAX_SP_LEN_,
+                                     v)
+    return qc
+
+# Neighbor Report BSSID Info subfield Std Fig 8-216
+# AP Reachability|Security|Key Scope|Capabilities|Mobility Dom| HT|Reserved
+#           BO-B1|      B2|       B3|       B4-B9|         B10|B11|B12-B31
+# where capabilties is defined as Std Fig 8-127
+# Spec MGMT|QoS|APSD|RDO MSMT|DEL Block ACK|Immediate Block Ack
+#         1|  2|   3|       4|            5|                  6
+_EID_NEIGHBOR_REPORT_BSSID_INFO_ = {'security':(1<<2),'key-scope':(1<<3),
+                                    'spec-mgmt':(1<<4),'qos':(1<<5),
+                                    'apsd':(1<<6),'rdo-msmt':(1<<7),
+                                    'del-back':(1<<8),'imm-back':(1<<9),
+                                    'mob-dom':(1<<10),'ht':(1<<11)}
+_EID_NEIGHBOR_REPORT_BSSID_INFO_REACH_DIVIDER_    =  2
+_EID_NEIGHBOR_REPORT_BSSID_INFO_CAPS_START_       =  4
+_EID_NEIGHBOR_REPORT_BSSID_INFO_CAPS_LEN_         =  6
+_EID_NEIGHBOR_REPORT_BSSID_INFO_RSRV_START_       = 12
+def _eidneighrptinfo_(v):
+    """ :returns: parsed bssid info subelement """
+    bi = bits.bitmask_list(_EID_NEIGHBOR_REPORT_BSSID_INFO_,v)
+    bi['ap-reach'] = bits.leastx(_EID_NEIGHBOR_REPORT_BSSID_INFO_REACH_DIVIDER_,v)
+    bi['rsrv'] = bits.mostx(_EID_NEIGHBOR_REPORT_BSSID_INFO_RSRV_START_,v)
+    return bi
+
+# HT OP element HT OP Info subelement Std Fig 8-256
+# This is a 5 octet subelement that we break down into 1,2,2 octets
+# HT OP Info One: 1 octet
+# Secondary Channel offset|Sta Ch Width|RIFS Mode|Reserved
+#                    B0-B1|          B2|       B3|   B4-B7
+_EID_HT_OP_HT_OP1_ = {'sta-ch-width':(1<<2),'rifs':(1<<3)}
+_EID_HT_OP_HT_OP1_DIVIDER_    = 2
+_EID_HT_OP_HT_OP1_RSRV_START_ = 4
+# HT OP Info Two: 2 octets
+# HT Protection|Nongreendfield Present|Reserved|OBSS Non-Ht Present|Reserved
+#         B8-B9|                   B10|     B11|                B12|B13-B23
+#       <B0-B1>|                  <B2>|    <B3>|               <B4>|<B5>-<B15>
+_EID_HT_OP_HT_OP2_ = {'non-greenfield':(1<<2),'rsrv2':(1<<3),'obss-non-ht':(1<<4)}
+_EID_HT_OP_HT_OP2_DIVIDER_    = 2
+_EID_HT_OP_HT_OP2_RSRV_START_ = 5
+# HT OP Info Three: 2 octets
+# Reserved|Dual Beacon|Dual CTS|STBC Beacon|L-SIX TXOP|PCO Active|PCO Phase|Reserved
+#  B24-B29|        B30|     B31|        B32|       B33|       B34|      B35|B36-B39
+#  <B0-B5>|       <B6>|    <B7>|       <B8>|      <B9>|     <B10>|    <B11>|<B12>-<B15>
+_EID_HT_OP_HT_OP3_ = {'dual-beacon':(1<<6),'dual-cts':(1<<7),'stbc-beacon':(1<<8),
+                      'lsig-txop-pro':(1<<9),'pco-active':(1<<10),'pco-phase':(1<<11)}
+_EID_HT_OP_HT_OP3_DIVIDER_    =  6
+_EID_HT_OP_HT_OP3_RSRV_START_ = 12
+def _eidhtopinfo_(h1,h2,h3):
+    """ :returns: parsed HT OP Info subelement"""
+    htop = {}
+    ht1 = bits.bitmask_list(_EID_HT_OP_HT_OP1_,h1)
+    ht1['sec-ch-off'] = bits.leastx(_EID_HT_OP_HT_OP1_DIVIDER_,h1)
+    ht1['rsrv1'] = bits.mostx(_EID_HT_OP_HT_OP1_RSRV_START_,h1)
+    ht2 = bits.bitmask_list(_EID_HT_OP_HT_OP2_,h2)
+    ht2['ht-pro'] = bits.leastx(_EID_HT_OP_HT_OP2_DIVIDER_,h2)
+    ht2['rsrv3'] = bits.mostx(_EID_HT_OP_HT_OP2_RSRV_START_,h2)
+    ht3 = bits.bitmask_list(_EID_HT_OP_HT_OP3_,h3)
+    ht3['rsrv4'] = bits.leastx(_EID_HT_OP_HT_OP3_DIVIDER_,h3)
+    ht3['rsrv5'] = bits.mostx(_EID_HT_OP_HT_OP3_RSRV_START_,h3)
+    for ht in ht1: htop[ht] = ht1[ht]
+    for ht in ht2: htop[ht] = ht2[ht]
+    for ht in ht3: htop[ht] = ht3[ht]
+    return htop
 
 #### CTRL Frames Std 8.3.1
 

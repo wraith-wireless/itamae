@@ -46,6 +46,7 @@ class error(EnvironmentError): pass
 # SOME CONSTANTS
 BROADCAST = "ff:ff:ff:ff:ff:ff" # broadcast address
 MAX_MPDU = 7991                 # maximum mpdu size in bytes
+# see Std Table 8-124, max a-msdu = 7935
 
 class MPDU(dict):
     """
@@ -240,13 +241,11 @@ class MPDU(dict):
 
     def getie(self,ie):
         """
-         returns value of specified ie (if present)
+         returns value(s) of specified ie (if present)
          :param ie:
-         :returns: value for info element field ie if present else None
+         :returns: a list of values for info element field with id ie
         """
-        for eid,val in self.info_els:
-            if eid == ie: return val
-        return None
+        return [val for eid,val in self.info_els if eid == ie]
 
     def geties(self,ies):
         """
@@ -272,7 +271,6 @@ def parse(f,hasFCS=False):
        sz -> offset of last bytes read from mpdu (not including fcs).
        present -> an ordered list of fields present in the frame
        and key->value pairs for each field in present
-     NOTE: will throw an exception if the minimum frame cannot be parsed
     """
     # at a minimum, frames will be FRAMECTRL|DURATION|ADDR1 (and fcs if not
     # stripped by the firmware) see Std 8.3.1.3
@@ -294,9 +292,8 @@ def parse(f,hasFCS=False):
             m['fcs'] = struct.unpack('=L',f[-4:])[0]
             f = f[:-4]
             m['stripped'] += 4
-    except (struct.error,ValueError) as e:
-        if len(f) <= 0: return {'offset':0}
-        raise error("Failed to unpack: {0}".format(e))
+    except (struct.error,ValueError):
+        raise error("Frame did not meet minimum 802.11 frame size")
     else:
         # handle frame types separately (return on FT_RSRV
         if m.type == std.FT_MGMT: _mpdu._parsemgmt_(f,m)

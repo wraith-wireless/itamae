@@ -33,13 +33,11 @@
      - IBSS DFS element
      - RSN element
      - Extended Capabilities element
-     - country element
-     - request element
-     - edca parameter set
+     - request element: there is no definition of the size of each request element id
      - TPSEC element
      - TCLAS element
-     - AP Channel Report element
-     - Neighbor report element
+     - Neighbor report element: optional subelements need further parsing
+       see Table 8-240 and 8-115, 8-116 and Figures 8-218 thru 8-221
      - Msmt Pilot Transmission element
      - BSS Available Admission Capacity
      - RM Enabled Capabilities
@@ -48,8 +46,8 @@
      - RIC Descripto element
      - DSE Registered location
      - MGMT MIC element
-     - HT capabilities element
-     - HT Operation element
+     - HT capabilities element: have to parse the mcs set subfield
+     - HT Operation element: have to parse the mcs set subfield
      - 20/40 BSS Intolerant Ch Report
      - Time Advertisement
      - Event Request & Reprt
@@ -81,6 +79,7 @@
      - PXU
      - Auth. Mesh Peering Exchange
      - MIC
+     - QoS Capability element - determine if sent by AP or non-AP
    o for vendor specific info-elements is there info out there on the most common
     or some other methods for determining how for example wireshark parses these
     looks like there is some further consistency from wireshark reviews
@@ -90,7 +89,12 @@
     586) write a func to provide ranges i.e. n ==> 2 <= n <= 14
    o For RDE, see 8.4.1.9, code in values of status code
    o for Supported operating classes see 10.10.1 and 10.11.9.1 for info on
-    operating clases element
-   o for Nontransmitted BSSID capability sett 8.4.2.48, 10.11.14 & 10.1.3.6
+    operating classes element
+   o for Nontransmitted BSSID capability set 8.4.2.48, 10.11.14 & 10.1.3.6
    o twos complement signed integer value for interference level field in
-     Collocated Interference Report element
+     Collocated Interference Report element & TPC Report element
+   o Info element: Country element is currently treated as 3 unsigned octets but
+    see Std, the Max Tx Pwr Lvl/Cov class may actually be unsigned in some cases.
+    No definition of when this is
+   o Annex E for operating class and channel number
+   o find all info elements that reference subelements Fig 8-402

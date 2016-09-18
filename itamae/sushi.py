@@ -51,5 +51,4 @@ def bento(f):
         dM = mpdu.parse(f[dR.size:],'fcs' in dR.flags)
     except (rtap.error,mpdu.error) as e:
         err = e
-    
     return dR,dM,f[dR.size+dM.offset:-dM.stripped],err
