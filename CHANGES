@@ -15,3 +15,6 @@ v 0.1.2
   - mpdu contains error, MPDU class and parse function
   - moved public constants to file ieee80211.py
   - moved private helper functions to _mpdu.py
+ o changed MPDU.info_els to MPDU.info_elements
+ o began parsing of all info_elements (see TODO for those not completed)
+ o modified getie, geties in mpdu

@@ -26,7 +26,7 @@ Defines constants as found in the Standard IEEE 802.11-2012
 
 __name__ = 'ieee80211'
 __license__ = 'GPL v3.0'
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 __date__ = 'September 2016'
 __author__ = 'Dale Patterson'
 __maintainer__ = 'Dale Patterson'
@@ -230,7 +230,7 @@ EID_MESH_CH_SWITCH_PARAM    = 118
 EID_MESH_AWAKE_WIN          = 119
 EID_BEACON_TIMING           = 120
 EID_MCCAOP_SETUP_REQ        = 121
-EID_MCCOAP_SETUP_REP        = 122
+EID_MCCAOP_SETUP_REP        = 122
 EID_MCCAOP_ADV              = 123
 EID_MCCAOP_TEARDOWN         = 124
 EID_GANN                    = 125
@@ -325,6 +325,24 @@ EID_NEIGHBOR_RPT_AP_REACH_RSRV = 0
 EID_NEIGHBOR_RPT_AP_REACH_NO   = 1
 EID_NEIGHBOR_RPT_AP_REACH_UNK  = 2
 EID_NEIGHBOR_RPT_AP_REACH_YES  = 3
+
+# Std Table 8-174 (Access Network Types)
+EID_INTERWORKING_ANT_PRIV_NET        =  0
+EID_INTERWORKING_ANT_PRIV_NET_GUEST  =  1
+EID_INTERWORKING_ANT_PUB_NET_CHARGE  =  2
+EID_INTERWORKING_ANT_PUB_NET_FREE    =  3
+EID_INTERWORKING_ANT_PAN             =  4
+EID_INTERWORKING_ANT_EMERG_SERVICE   =  5
+EID_INTERWORKING_ANT_TEST            = 14
+EID_INTERWORKING_ANT_WILDCARD        = 15
+# NOTE: 6 to 13 are reserved
+
+# Std Table 8-183 (MCCA Reply Code values)
+EID_MCCA_REPLY_CODE_ACCEPT           = 0
+EID_MCCA_REPLY_CODE_REJECT_CONFLICT  = 1 # MCCAOP resrvation conflict
+EID_MCCA_REPLY_CODE_REJECT_MAF_LIM   = 2 # MAF limit exceeded
+EID_MCCA_REPLY_CODE_REJECT_TRACK_LIM = 3 # MCCA track limit exceeded
+# NOTE: 4-255 are reserved
 
 # constants for status codes Std Table 8-37 (see also ieee80211.h)
 STATUS_SUCCESS                                =   0
@@ -494,3 +512,5 @@ CATEGORY_VHT                       =  21
 CATEGORY_VENDOR_SPECIFIC_PROTECTED = 126
 CATEGORY_VENDOR_SPECIFIC           = 127
 # 128 to 255 are error codes
+
+# Cipher suite selectors Std Table 8-99

@@ -236,30 +236,30 @@ class MPDU(dict):
     def fixed_params(self):
         return self['fixed-params'] if 'fixed-params' in self else []
     @property
-    def info_els(self):
+    def info_elements(self):
         return self['info-elements'] if 'info-elements' in self else []
+
+    #### ACCESSORS
 
     def getie(self,ie):
         """
          returns value(s) of specified ie (if present)
-         :param ie:
+         :param ie: information element to retrieve
          :returns: a list of values for info element field with id ie
+         NOTE: unlike the property info_elements, a request for a non-existing
+          information element will not return an error
         """
-        return [val for eid,val in self.info_els if eid == ie]
+        try:
+            return [field for field in self.info_elements[ie]]
+        except KeyError:
+            return []
 
     def geties(self,ies):
         """
          :param ies: desired list of info elements
          :returns: list of lists of info elements found
         """
-        ret = [[] for _ in ies]
-        for ie in self.info_els:
-            try:
-                ix = ies.index(ie[0])
-                ret[ix].append(ie[1])
-            except (ValueError,IndexError):
-                pass
-        return ret
+        return [self.getie(ie) for ie in ies]
 
 def parse(f,hasFCS=False):
     """
@@ -325,6 +325,8 @@ def parse(f,hasFCS=False):
     # append the fcs to present if necessary and return the mpdu dict
     if hasFCS: m['present'].append('fcs')
     return m
+
+# NO LONGER USED BUT KEPT FOR NOW
 
 # Std 8.2.4.1.3
 # each subtype field bit pos indicates a specfic modification of the base data frame

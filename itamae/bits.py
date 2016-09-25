@@ -75,8 +75,8 @@ def bitmask(bm,mn):
 
 def bitmask_list(bm,mn):
     """
-     returns a dict d = {name:is_set} for each name in bitmask that is set in the
-     magic number
+     returns a dict d = {name:is_set} for each name in bitmask that is set/not set
+      in the magic number
      :param bm: bitmask
      :param mn: magic number
      :returns: dict d = {name:is_set}
