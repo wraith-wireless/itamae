@@ -18,3 +18,4 @@ v 0.1.2
  o changed MPDU.info_els to MPDU.info_elements
  o began parsing of all info_elements (see TODO for those not completed)
  o modified getie, geties in mpdu
+ o info_elements in mgmt frames changed from list to dict

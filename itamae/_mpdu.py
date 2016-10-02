@@ -27,8 +27,8 @@ Supports the parsing of 802.11 MAC Protocol Data Unit (MPDU) IAW IEEE 802.11-201
 
 __name__ = '_mpdu'
 __license__ = 'GPL v3.0'
-__version__ = '0.0.1'
-__date__ = 'September 2016'
+__version__ = '0.0.5'
+__date__ = 'October 2016'
 __author__ = 'Dale Patterson'
 __maintainer__ = 'Dale Patterson'
 __email__ = 'wraith.wireless@yandex.com'
@@ -45,35 +45,45 @@ import itamae.ieee80211 as std
 # BYTES   2      2     6     6     6       2     6   2   4  var   4
 
 # unpack formats
-_S2F_ = {'framectrl':'BB',
-         'duration':'H',
-         'addr':'6B',
-         'seqctrl':'H',
-         'bactrl':'H',
-         'barctrl':'H',
-         'qos':"BB",
-         'htc':'I',
-         'capability':'H',
-         'listen-int':'H',
-         'status-code':'H',
-         'aid':'H',
-         'timestamp':'Q',
-         'beacon-int':'H',
-         'reason-code':'H',
-         'algorithm-no':'H',
-         'auth-seq':'H',
-         'category':'B',
-         'action':'B',
-         'wep-keyid':'B',
-         'fcs':'I'}
+_S2F_ = {
+    'framectrl':'BB',
+    'duration':'H',
+    'addr':'6B',
+    'seqctrl':'H',
+    'bactrl':'H',
+    'barctrl':'H',
+    'qos':"BB",
+    'htc':'I',
+    'capability':'H',
+    'listen-int':'H',
+    'status-code':'H',
+    'aid':'H',
+    'timestamp':'Q',
+    'beacon-int':'H',
+    'reason-code':'H',
+    'algorithm-no':'H',
+    'auth-seq':'H',
+    'category':'B',
+    'action':'B',
+    'wep-keyid':'B',
+    'fcs':'I'
+}
 
 # Frame Control Flags Std 8.2.4.1.1
 # td -> to ds fd -> from ds mf -> more fragments r  -> retry pm -> power mgmt
 # md -> more data pf -> protected frame o  -> order
 # index of frame types and string titles
 _FC_FLAGS_NAME_ = ['td','fd','mf','r','pm','md','pf','o']
-_FC_FLAGS_ = {'td':(1<<0),'fd':(1<<1),'mf':(1<<2),'r':(1<<3),
-               'pm':(1<<4),'md':(1<<5),'pf':(1<<6),'o':(1<<7)}
+_FC_FLAGS_ = {
+    'td':(1<<0), # to ds
+    'fd':(1<<1), # from ds
+    'mf':(1<<2), # more fragments
+    'r':(1<<3),  # retry
+    'pm':(1<<4), # power mgmt
+    'md':(1<<5), # more data
+    'pf':(1<<6), # protected frame
+    'o':(1<<7)   # order
+}
 def _fcflags_(mn): return bits.bitmask_list(_FC_FLAGS_,mn)
 
 #### DURATION/ID Std 8.2.4.2 (also see Table 3.3 in CWAP)
@@ -221,8 +231,14 @@ def qosinfoap(v):
 # Sent by non-AP STA Std Figure 8-52
 # AC_VO_U_APSD|AC_VI_U_APSD|AC_BK_U_APSD|AC_BE_U_APSD|Q-Ack|Max SP Len|More data ACK
 #           BO|          B1|          B2|          B3|   B4|   B5-B6  | B7
-_QOS_INFO_STA_ = {'vo':(1<<0),'vi':(1<<1),'bk':(1<<2),
-                  'be':(1<<3),'q-ack':(1<<4),'more':(1<<7)}
+_QOS_INFO_STA_ = {
+    'vo':(1<<0),
+    'vi':(1<<1),
+    'bk':(1<<2),
+    'be':(1<<3),
+    'q-ack':(1<<4),
+    'more':(1<<7)
+}
 _QOS_INFO_STA_MAX_SP_START_ = 5
 _QOS_INFO_STA_MAX_SP_LEN_   = 2
 def qosinfosta(v):
@@ -235,12 +251,14 @@ def qosinfosta(v):
 
 #### HT CONTROL Std 8.2.4.6
 # HTC is 4 bytes
-_HTC_FIELDS_ = {'lac-rsrv':(1<<0),
-                'lac-trq':(1<<1),
-                'lac-mai-mrq':(1<<2),
-                'ndp-annoucement':(1<<24),
-                'ac-constraint':(1<<30),
-                'rdg-more-ppdu':(1<<31)}
+_HTC_FIELDS_ = {
+    'lac-rsrv':(1<<0),
+    'lac-trq':(1<<1),
+    'lac-mai-mrq':(1<<2),
+    'ndp-annoucement':(1<<24),
+    'ac-constraint':(1<<30),
+    'rdg-more-ppdu':(1<<31)
+}
 _HTC_LAC_MAI_MSI_START_      =  3
 _HTC_LAC_MAI_MSI_LEN_        =  3
 _HTC_LAC_MFSI_START_         =  6
@@ -345,8 +363,8 @@ def _parsemgmt_(f,m):
             fmt = _S2F_['timestamp'] + _S2F_['beacon-int'] + _S2F_['capability']
             v,m['offset'] = _unpack_from_(fmt,f,m['offset'])
             m['fixed-params'] = {'timestamp':v[0],
-                               'beacon-int':v[1]*1024,  # return in microseconds
-                               'capability':_parsecapinfo_(v[2])}
+                                 'beacon-int':v[1]*1024,  # return in microseconds
+                                 'capability':_parsecapinfo_(v[2])}
             m['present'].append('fixed-params')
         elif m.subtype == std.ST_MGMT_DISASSOC or m.subtype == std.ST_MGMT_DEAUTH:
             v,m['offset'] = _unpack_from_(_S2F_['reason-code'],f,m['offset'])
@@ -356,8 +374,8 @@ def _parsemgmt_(f,m):
             fmt = _S2F_['algorithm-no'] + _S2F_['auth-seq'] + _S2F_['status-code']
             v,m['offset'] = _unpack_from_(fmt,f,m['offset'])
             m['fixed-params'] = {'algorithm-no':v[0],
-                               'auth-seq':v[1],
-                               'status-code':v[2]}
+                                 'auth-seq':v[1],
+                                 'status-code':v[2]}
             m['present'].append('fixed-params')
         elif m.subtype == std.ST_MGMT_ACTION or m.subtype == std.ST_MGMT_ACTION_NOACK:
             fmt = _S2F_['category'] + _S2F_['action']
@@ -407,23 +425,24 @@ def _parsemgmt_(f,m):
 #### MGMT Frame subfields
 
 # CAPABILITY INFO Std 8.4.1.4
-
-_CAP_INFO_ = {'ess':(1<<0),
-              'ibss':(1<<1),
-              'cfpollable':(1<<2),
-              'cf-poll-req':(1<<3),
-              'privacy':(1<<4),
-              'short-pre':(1<<5),
-              'pbcc':(1<<6),
-              'ch-agility':(1<<7),
-              'spec-mgmt':(1<<8),
-              'qos':(1<<9),
-              'time-slot':(1<<10),
-              'apsd':(1<<11),
-              'rdo-meas':(1<<12),
-              'dsss-ofdm':(1<<13),
-              'delayed-ba':(1<<14),
-              'immediate-ba':(1<<15)}
+_CAP_INFO_ = {
+    'ess':(1<<0),
+    'ibss':(1<<1),
+    'cfpollable':(1<<2),
+    'cf-poll-req':(1<<3),
+    'privacy':(1<<4),
+    'short-pre':(1<<5),
+    'pbcc':(1<<6),
+    'ch-agility':(1<<7),
+    'spec-mgmt':(1<<8),
+    'qos':(1<<9),
+    'time-slot':(1<<10),
+    'apsd':(1<<11),
+    'rdo-meas':(1<<12),
+    'dsss-ofdm':(1<<13),
+    'delayed-ba':(1<<14),
+    'immediate-ba':(1<<15)
+}
 def _parsecapinfo_(mn):
     """ :returns: parsed cap info field"""
     return bits.bitmask_list(_CAP_INFO_,mn)
@@ -439,14 +458,11 @@ def _parseie_(eid,info):
     """
     try:
         if eid == std.EID_SSID: # Std 8.4.2.2
-            try:
-                info = info.decode('utf8')
-            except UnicodeDecodeError:
-                pass
+            info = _iesubelssid_(info)
         elif eid == std.EID_SUPPORTED_RATES or eid == std.EID_EXTENDED_RATES: # Std 8.4.2.3, .15
             # split listofrates where each rate is Mbps. list is 1 to 8 octets,
             # each octect describes a single rate or BSS membership selector
-            info = [_getrate_(struct.unpack('=B',r)[0]) for r in info]
+            info = [_eidrates_(struct.unpack('=B',r)[0]) for r in info]
         elif eid == std.EID_FH: # Std 8.4.2.4
             # ttl length is 5 octets w/ 4 elements
             dtime,hset,hpattern,hidx = struct.unpack_from('=H3B',info)
@@ -508,8 +524,8 @@ def _parseie_(eid,info):
                     'offset':off,
                     'rtab':[struct.unpack('=B',r)[0] for r in rtab]}
         elif eid == std.EID_REQUEST: # Std 8.4.2.13
-            # variable length see Std 10.1.4.3.2 for more info
-            pass
+            # variable length, list of element ids
+            info = list(struct.unpack_from("={0}B".format(len(info)),info))
         elif eid == std.EID_BSS_LOAD: # Std 8.4.2.30
             # 3 element
             cnt,util,cap = struct.unpack_from('=HBH',info)
@@ -536,9 +552,40 @@ def _parseie_(eid,info):
                              'ecw':_eidedcaecw_(vs[12]),
                              'txop-lim':vs[13]}}
         elif eid == std.EID_TSPEC: # Std 8.4.2.32
-            pass
+            # See Fig 8-196, 55 octet field with 16 subfields
+            # the first field ts-info is 3 bytes which we append a null byte to
+            # IOT to treat it as a 4-octet field
+            # 3 1-octet elements
+            tsinfo = _eidtspectsinfo_(struct.unpack_from('=I',info[0:3]+'\x00'))
+            vs = struct.unpack_from('=2H11I2H',info,3)
+            info = {'ts-info':tsinfo,
+                    'nom-msdu-sz':{'sz':bits.leastx(15,vs[0]),
+                                   'fixed':bits.mostx(15,vs[0])},
+                    'max-msdu-sz':vs[1],
+                    'min-ser-intv':vs[2],
+                    'max-ser-intv':vs[3],
+                    'inactivity-intv':vs[4],
+                    'suspension-intv':vs[5],
+                    'ser-start-time':vs[6],
+                    'min-data-rate':vs[7],
+                    'mean-data-rate':vs[8],
+                    'peak-data-rate':vs[9],
+                    'burst-sz':vs[10],
+                    'delay-bound':vs[11],
+                    'min-phy-rate':vs[12],
+                    'surplus-bw-allowance':vs[13],
+                    'medium-time':vs[14]}
         elif eid == std.EID_TCLAS: # Std 8.4.2.33
-            pass
+            # User Pri|Frame Classifier
+            #        1|             var
+            rem = info[1:]
+            up = struct.unpack_from('=B',info)
+
+            # Frame Classifier is 3=252 octets long
+            # Classifier Type|Classifier Mask|Classifier Params
+            #               1|              1|              var
+            ct,cm = struct.unpack_from('=2B',rem)
+            info = {'up':up,'type':ct,'mask':cm,'params':rem[2:]}
         elif eid == std.EID_SCHED: # Std 8.4.2.36
             # 12 bytes, 4 element
             sinfo,start,ser_int,spec_int = struct.unpack_from('=H3I',info)
@@ -546,7 +593,9 @@ def _parseie_(eid,info):
                     'ser-start':start,
                     'ser-int':ser_int,
                     'spec-int':spec_int}
-        elif eid == std.EID_CHALLENGE: pass # Std 8.4.2.9
+        elif eid == std.EID_CHALLENGE: # Std 8.4.2.9
+            # 1-253 octet challenge text (see Std 11.2.3.2)
+            info = binascii.hexlify(info)
         elif eid == std.EID_PWR_CONSTRAINT: # Std 8.4.2.16
             info = struct.unpack_from('=B',info)[0] # in dBm
         elif eid == std.EID_PWR_CAPABILITY: # Std 8.4.2.17
@@ -573,16 +622,39 @@ def _parseie_(eid,info):
             # 3 element
             mode,new,cnt = struct.unpack_from('=3B',info)
             info = {'mode':mode,'new-ch':new,'cnt':cnt}
-        elif eid == std.EID_MEAS_REQ: # Std 8.4.2.23
-            pass
-        elif eid == std.EID_MEAS_RPT: # Std 8.4.2.24
-            pass
+        elif eid == std.EID_MSMT_REQ: # Std 8.4.2.23
+            # Msmt Token|Msmt Mode|Msmt Type|Msmt Req
+            #          1|        1|        1|     var
+            tkn,mod,typ = struct.unpack_from('=3B',info)
+            info = {'tkn':tkn,
+                    'mode':_eidmsmtreqmode_(mod),
+                    'type':typ,
+                    'req':info[3:]}
+        elif eid == std.EID_MSMT_RPT: # Std 8.4.2.24
+            # Msmt Token|Msmt Mode|Msmt Type|Msmt Rpt
+            #          1|        1|        1|     var
+            tkn,mod,typ = struct.unpack_from('=3B',info)
+            info = {'tkn':tkn,
+                    'mode':_eidmstrptmode_(mod),
+                    'type':typ,
+                    'rpt':info[3:]}
         elif eid == std.EID_QUIET: # Std 8.4.2.25
-            # 4 element
+            # elements: 1|1|2|2
             cnt,per,dur,off = struct.unpack_from('=2B2H',info)
             info = {'cnt':cnt,'per':per,'dur':dur,'offset':off}
         elif eid == std.EID_IBSS_DFS: # Std 8.4.2.26
-            pass
+            # DFS Owner|DFS Recv Intv|CH Map|
+            #         6|            1|2*n
+            vs = struct.unpack_from('=7B',info)
+            rem = info[7:]
+            info = {'owner':_hwaddr_(vs[0:6]),
+                    'recv-intv':vs[6],
+                    'ch-map':[]}
+
+            # ch map is list of 2 1-octet subfields
+            for i in xrange(0,len(rem),2):
+                chn,chm = struct.unpack_from('=2B',rem,i)
+                info['ch-map'].append({'ch-num':chn,'map':_eidmultchmap_(chm)})
         elif eid == std.EID_ERP: # Std 8.4.2.14
             # Caution: element length is flexible, may change
             info = _eiderp_(struct.unpack_from('=B',info)[0])
@@ -605,8 +677,56 @@ def _parseie_(eid,info):
         elif eid == std.EID_QOS_CAP: # Std 8.4.2.37, 8.4.1.17
             # 1 byte 1 element. Requires further parsing to get subfields
             info = struct.unpack_from('=B',info)[0]
-        elif eid == std.EID_RSN: # Std 8.4.2.27
-            pass
+        elif eid == std.EID_RSNE: # Std 8.4.2.27
+            # contains up to and including the version field
+            rem = info[2:]
+            info = {'vers':struct.unpack_from('=H',info)[0]}
+
+            # all fields after version are optional. All cipher suites are a
+            # 4-byte octet which we treat as four 1-byte octets for handling by
+            # _eidrsnesuitesel_()
+            # group data cipher suite
+            if rem:
+                vs = struct.unpack_from('=4B',rem)
+                info['grp-data-cs'] = _eidrsnesuitesel_(vs)
+                rem = rem[4:]
+
+            # pairwise cipher suite count & list
+            if rem:
+                info['pairwise-cnt'] = struct.unpack_from('=H',rem)[0]
+                info['pairwise-cs-list'] = []
+                for i in xrange(info['pairwise-cnt']):
+                    pairwise = struct.unpack_from('=4B',rem,2+(i*4))
+                    info['pairwise-cs-list'].append(_eidrsnesuitesel_(pairwise))
+                rem = rem[2+(4*info['pairwise-cnt']):]
+
+            # AKM suite count & list
+            if rem:
+                info['akm-cnt'] = struct.unpack_from('=H',rem)[0]
+                info['akm-list'] = []
+                for i in xrange(info['akm-cnt']):
+                    akm = struct.unpack_from('=4B',rem,2+(i*4))
+                    info['akm-list'].append(_eidrsnesuitesel_(akm))
+                rem = rem[2+(4*info['akm-cnt']):]
+
+            # RSN capabilities
+            if rem:
+                info['rsn-cap'] = _eidrsnecap_(struct.unpack_from('=H',rem)[0])
+                rem = rem[2:]
+
+            # PMKID count & list
+            if rem:
+                info['pmkid-cnt'] = struct.unpack_from('=H',rem)[0]
+                info['pmkid-list'] = []
+                rem = rem[2:]
+                for i in xrange(info['pmkid-cnt']):
+                    info['pmkid-list'].append(binascii.hexlify(rem[:16]))
+                    rem = rem[16:]
+
+            # group mgmt cipher suite
+            if rem:
+                vs = struct.unpack_from('=4B',rem)
+                info['grp-mgmt-cs'] = _eidrsnesuitesel_(vs)
         elif eid == std.EID_AP_CH_RPT: # Std 8.4.2.38
             # min 1 octet followed by variable list of channels
             opclass = struct.unpack_from('=B',info)[0]
@@ -622,14 +742,25 @@ def _parseie_(eid,info):
                     'op-class':op,
                     'ch-num':ch,
                     'phy':phy}
-            if rem: info['opt'] = _parseinfoelsubel_(rem)
+            if rem: info['opt-subels'] = _parseiesubel_(rem,_iesubelneighrpt_)
         elif eid == std.EID_RCPI: # Std 8.4.2.40
             info = struct.unpack_from('=B',info)[0]
         elif eid == std.EID_MDE: # Std 84.2.49
             mdid,ft = struct.unpack_from('=HB',info)
             info = {'mdid':mdid,'ft-cap-pol':_eidftcappol_(ft)}
         elif eid == std.EID_FTE: # Std 8.4.2.50
-            pass
+            # MIC CTRL|MIC|ANonce|SNonce|OPT Params
+            #        2| 16|    32|    32|       var
+            # where MIC is current Rsrv(8)|Element count(8)
+            rsrv,ecnt = struct.unpack_from('=2B',info)
+            rem = info[2:]
+            mic,anonce,snonce = rem[:16],rem[16:48],rem[48:80]
+            info = {'mic-ctrl': {'rsrv': rsrv, 'el-cnt': ecnt},
+                    'mic':binascii.hexlify(mic),
+                    'anonce':binascii.hexlify(anonce),
+                    'snonce':binascii.hexlify(snonce)}
+            rem = rem[80:]
+            if rem: info['opt-subels'] = _parseiesubel_(rem,_iesubelfte_)
         elif eid == std.EID_TIE: # Std 8.4.2.51
             typ,val = struct.unpack_from('=BI',info)
             info = {'int-type':typ,'int-val':val}
@@ -638,7 +769,9 @@ def _parseie_(eid,info):
             rid,cnt,stat = struct.unpack_from('=2BH',info)
             info = {'rde-id':rid,'rd-cnt':cnt,'status':stat}
         elif eid == std.EID_DSE_REG_LOC: # Std 8.4.2.54
-            pass
+            # one 20-octet element w/ subfields of varying lengths
+            # we let a helper parse this
+            info = _parseinfoeldse_(info)
         elif eid == std.EID_OP_CLASSES: # Std 8.4.256
             # 2 elements, 1 byte, & 1 2 to 253
             # see 10.10.1 and 10.11.9.1 for use of op-classes element
@@ -676,11 +809,11 @@ def _parseie_(eid,info):
             # values. RSNI in dB is scaled in steps of 0.5 dB to obtain 8-bit RSNI values,
             # which cover the range from -10 dB to +117 dB
             info = struct.unpack_from('=B',info)[0]
-        elif eid == std.EID_MEAS_PILOT: # Std 8.4.2.44
+        elif eid == std.EID_MSMT_PILOT: # Std 8.4.2.44
             # 1 octet + variable length subelements
-            var = info[1:]
+            opt = info[1:]
             info = {'msmt-pilot-tx':struct.unpack('=B',info)[0]}
-            if var: info['opt'] = _parseinfoelsubel_(var)
+            if opt: info['opt-subels'] = _parseiesubel_(opt,_iesubelmsmtpilot_)
         elif eid == std.EID_BSS_AVAIL: # Std 8.4.2.45
             # 2 element. Admin Cap bitmask is 2 octets & Admin Cap list is
             # variable 2 octet uint for nonzero bit in bitmask
@@ -717,8 +850,8 @@ def _parseie_(eid,info):
         elif eid == std.EID_MUL_BSSID: # Std 8.4.2.48
             # 1 octet + variable length subelements
             rem = info[1:]
-            info = {'max-bssid':struct.unpack('=B', info)[0]}
-            if rem: info['opt'] = _parseinfoelsubel_(rem)
+            info = {'max-bssid':struct.unpack('=B',info)[0]}
+            if rem: info['opt-subels'] = _parseiesubel_(rem)
         elif eid == std.EID_20_40_COEXIST: # Std 8.4.2.62
             # 1 element, 1 byte
             info = _eid2040coexist_(struct.unpack_from('=B',info)[0])
@@ -739,7 +872,8 @@ def _parseie_(eid,info):
                     'threshold':vs[6]}
         elif eid == std.EID_RIC_DESC: # Std 8.4.2.53
             # 1 octect followed by variable parameters (based on resource type)
-            info = {'res-type':struct.unpack_from('=B',info)[0],'params':info[1:]}
+            info = {'res-type':struct.unpack_from('=B',info)[0],
+                    'opt-subels':_parseiesubel_(info[1:])}
         elif eid == std.EID_MGMT_MIC: # Std 8.4.2.57
             # KeyID|IPIN|MIC
             #     2|   6|  8
@@ -749,15 +883,49 @@ def _parseie_(eid,info):
                     'ipin':struct.unpack_from('=Q',info[2:8]+'\x00\x00')[0],
                     'mic':struct.unpack_from('=Q',info[-8:])[0]}
         elif eid == std.EID_EVENT_REQ: # Std 8.4.2.69
-            pass
+            # Token|Type|Resp limit|Request
+            #     1|   1|         1|    var
+            tkn,typ,lim = struct.unpack_from('=3B',info)
+            info = {'tkn':tkn,'type':typ,'res-lim':lim,'req':info[3:]}
         elif eid == std.EID_EVENT_RPT: # Std 8.4.2.70
-            pass
+            # Token|Type|RPT Stat|   TSF |   UTC | Time |Report
+            #     1|   1|       1|(opt) 8|opt(10)|opt(5)|   var
+            tkn,typ,rpt = struct.unpack_from('=3B',info)
+            rem = info[3:]
+            info = {'tkn':tkn,'type':typ,'rpt-stat':rpt}
+
+            # remainder are only present if rpt is successful
+            if info['rpt-stat'] == std.EVENT_REPORT_STATUS_SUCCESS:
+                info['tsf'] = rem[:8]
+                info['utc-offset'] = rem[8:18]
+                info['time-err'] = rem[18:23]
+                rpt = rem[23:]
+                if rpt: info['rpt'] = rpt
         elif eid == std.EID_DIAG_REQ: # Std 8.3.2.71
-            pass
+            # Token|Type|Timeout|Optional
+            #     1|   1|      2|     var
+            tkn,typ,to = struct.unpack_from('=2BH',info)
+            info = {'tkn':tkn,'type':typ,'timeout':to}
+            if info['type'] > std.DIAGNOSTIC_REPORT_CONFIG:
+                info['opt-subels'] = _parseiesubel_(info[4:],_iesubeldiag_)
         elif eid == std.EID_DIAG_RPT: # Std 8.3.2.72
-            pass
+            # Token|Type|Status|Optional
+            #     1|   1|     1|     var
+            # based on description each report will return a set of fields
+            # in a specific order however, we assume for now that we can parse
+            # as if this were an unordered optional sublements
+            tkn,typ,stat = struct.unpack_from('=3B',info)
+            info = {'tkn':tkn,
+                    'type':typ,
+                    'stat':stat,
+                    'opt-subels':_parseiesubel_(info[3:],_iesubeldiag_)}
         elif eid == std.EID_LOCATION: # Std 8.3.2.73
-            pass
+            # it appears that each possible location subelement begins with
+            # a subelement id references Table 1-183, length and a variable field
+            # Subelement ID|Length|Paramaeters
+            #             1|     1|       var
+            # we'll save these as a list of tuples t = (id,param)
+            info = {'loc-subels':_parseiesubel_(info,_iesubelloc_)}
         elif eid == std.EID_NONTRANS_BSS: # Std 8.4.2.74
             info = struct.unpack_from('=H',info)[0]
         elif eid == std.EID_SSID_LIST: # Std 8.4.2.75
@@ -765,17 +933,7 @@ def _parseie_(eid,info):
             # SSID element is EID|LEN|SSID
             #                   1|  1|0-32
             # where EID = std.EID_SSID
-            ss = []
-            while len(info) > 2:
-                _,slen = struct.unpack_from('=2B',info)
-                ssid = info[2:2+slen]
-                try:
-                    ssid = ssid.decode('utf8')
-                except UnicodeDecodeError:
-                    pass
-                ss.append(ssid)
-                info = info[2+slen:]
-            info = ss
+            info = {'ssids':_parseiesubel_(info,_iesubelssid_)}
         elif eid == std.EID_MULT_BSSID_INDEX: # Std 8.4.2.76
             # 1 element @ 1 octet, 2 optional 1 octet elements
             # see Std 10.1.3.6 and 10.11.14
@@ -803,9 +961,15 @@ def _parseie_(eid,info):
             for i in xrange(m): fmsid.append(struct.unpack_from('=B',info,i))
             info = {'num-fms-cnt':n,'fms-cnt':fms,'fmsids':fmsid}
         elif eid == std.EID_FMS_REQ: # Std 8.4.2.78
-            pass
+            # FMS Token|Request Subelements
+            #         1|                var
+            info = {'fms-tkn':struct.unpack_from('=B',info),
+                    'req-subels':_parseiesubel_(info[1:],_iesubelfmsreq_)}
         elif eid == std.EID_FMS_RESP: # Std 8.4.2.79
-            pass
+            # FMS Token|Request Subelements
+            #         1|                var
+            info = {'fms-tkn':struct.unpack_from('=B',info),
+                    'stat-subels':_parseiesubel_(info[1:],_iesubelfmsresp_)}
         elif eid == std.EID_QOS_TRAFFIC_CAP: # Std 8.4.2.80
             # 1 1-octet element followed by variable list
             qt = _eidqostrafficcap_(struct.unpack_from('=B',info)[0])
@@ -817,7 +981,15 @@ def _parseie_(eid,info):
             per,opts = struct.unpack_from('=HB',info)
             info = {'max-idle-per':per,'idle-ops':_eidbssmaxidle_(opts)}
         elif eid == std.EID_TFS_REQ: # Std 8.4.2.82
-            pass
+            # TFS ID|TFS Act Code|Subelements
+            #      1|           1|        var
+            # where TFS Act Code is parse IAW Std Table 8-162
+            tid,tac = struct.unpack_from('=2B',info)
+            info = {'tfs-id':tid,
+                    'tfs-act-code':{'del':bits.leastx(1,tac),
+                                    'notify':bits.midx(1,1,tac),
+                                    'rsrv':bits.mostx(2,tac)},
+                    'tfs-req-subels':_parseiesubel_(info[2:],_iesubeltfsreq_)}
         elif eid == std.EID_TFS_RESP: # Std 8.4.2.83
             # one or more status subelements @ 4 bytes
             # dox is confusing - see Table 8-164 implying that each subelement
@@ -874,9 +1046,30 @@ def _parseie_(eid,info):
             # encoded in ASCII, we'll leave as is
             pass
         elif eid == std.EID_DMS_REQ: # Std 8.4.2.90
-            pass
+            # contains 1 or more DMS Descriptor defined as
+            # DMSID|Len|Req Type|TCLAS Els|Tclas Processing|TSPEC El|Optional
+            #     1|  1|       1|      var|     0 or 3     |0  or 57|     var
+            ds = []
+            while info:
+                did,dlen,typ = struct.unpack_from('=3B',info)
+                desc = {'dms-id':did,'req-type':typ,'unparsed':info[3:dlen+3]}
+                ds.append(desc)
+                info = info[dlen+3:]
+            info = ds
         elif eid == std.EID_DMS_RESP: # Std 8.4.2.91
-            pass
+            # contains 1 or more DMS status defined as
+            # DMSID|Len|Res Type|Last Seq Ctrl|TCLAS Els|TCLS Processing|TSPEC El|Optional
+            #     1   1|       1|            2|      var|     0 or 3    | 0 or 57|     var
+            ds = []
+            while info:
+                did,dlen,typ,lsc = struct.unpack_from('=3BH',info)
+                stat = {'dms-id':did,
+                        'res-type':typ,
+                        'last-seq-ctrl':lsc,
+                        'unparsed':info[5:5+dlen]}
+                ds.append(stat)
+                info = info[dlen+5:]
+            info = ds
         elif eid == std.EID_LINK_ID: # Std 8.4.2.64
             # 3 elements, each is a mac address
             info = {'bssid':_hwaddr_(struct.unpack_from('=6B',info)),
@@ -924,7 +1117,30 @@ def _parseie_(eid,info):
             if venue: info['venue-info'] = venue
             if hessid: info['hessid'] = hessid
         elif eid == std.EID_ADV_PROTOCOL: # Std 8.4.2.95
-            pass
+            # var number of Advertisement protocol tuples defined as
+            # Query Resp Info|Advertisement Protocol ID
+            #               1|                      var
+            apts = []
+            while info:
+                qri,apid = struct.unpack_from('=2B',info)
+                apt = {'qry-resp-info':_eidadvprotoqryrep_(qri),
+                       'adv-proto-id':apid}
+                info = info[2:]
+
+                # TODO: confirm this but unless the APID is Vend Specific (221)
+                # it is one octet in length
+                if apt['adv-proto-id'] == std.EID_VEND_SPEC:
+                    # if understood correctly, the remainding is a vendor specific
+                    # ID|length|oui|content
+                    #  1|     1|  3|    var = length-3
+                    # where id has already been unpacked
+                    vs = struct.unpack_from('=4B',info)[0]
+                    vlen = vs[0]
+                    apt['oui'] = _hwaddr_(vs[1:])
+                    apt['content'] = info[4:4+vlen]
+                    info = info[4+vlen:]
+                apts.append(apt)
+            info = apts
         elif eid == std.EID_EXPEDITED_BW_REQ: # Std 8.4.2.96
             # 1 element (precedence level)
             info = struct.unpack_from('=B',info)[0]
@@ -953,7 +1169,18 @@ def _parseie_(eid,info):
             # put them together
             info =  {'dscp-excepts':es,'dscp-ranges':rs}
         elif eid == std.EID_ROAMING_CONS: # Std 8.4.2.98
-            pass
+            # Num AQQP OIs|O1 #1 & #2 lengths|OI #1|OI #2|OI #3
+            #            1|                 1|  var|  var|   var
+            n,l = struct.unpack_from('=2B',info)
+            l1,l2 = bits.leastx(4,l),bits.mostx(4,l)
+            rem = info[2:]
+            oi1,oi2,oi3 = rem[:l1],None,None
+            if l2 > 0: oi2 = rem[l1:l1+2]
+            if len(info) - (2+l1+l2) > 0: oi3 = info[l1+l2:]
+            info = {'num-anqp-oi':n,'oi-1':oi1}
+            if oi2: info['oi-2'] = oi2
+            if oi3: info['oi-3'] = oi3
+            # TODO: should we make the oi's a OUI as implied in Std 8.4.1.31
         elif eid == std.EID_EMERGENCY_ALERT_ID: # Std 8.4.2.99
             # info is an 8-octet hash value
             info = struct.unpack_from('=Q',info)
@@ -1219,7 +1446,7 @@ def _parseie_(eid,info):
             # Suite|Local Nonce|Peer Nonce|Key Replay Counter|GTK data|IGTK Data
             #     4|         32|        32|           (opt) 8|     var|      var
             info = {
-                'cipher-suite':_eidrsnsuitesel_(struct.unpack_from('=4B',info)),
+                'cipher-suite':_eidrsnesuitesel_(struct.unpack_from('=4B',info)),
                 'local-nonce':binascii.hexlify(info[4:36]),
                 'peer-pnonce':binascii.hexlify(info[36:68]),
                 'remainder':info[68:]
@@ -1235,7 +1462,7 @@ def _parseie_(eid,info):
             tsfo,intv = struct.unpack_from('=QI',info)
             info = {'tsf0-offset':tsfo,
                     'interval':intv,
-                    'opt':_parseinfoelsubel_(info[struct.calcsize('=QI'):])}
+                    'opt-subels':_parseiesubel_(info[struct.calcsize('=QI'):])}
         elif eid == std.EID_MCCAOP_ADV_OVERVIEW: # Std 8.4.2.119
             # 1|1|1|1|2
             seqn,fs,frac,lim,bm = struct.unpack_from('=4BH', info)
@@ -1245,10 +1472,9 @@ def _parseie_(eid,info):
                     'mcca-access-frac': frac,
                     'maf-lim':lim,
                     'adv-els-bm':bm}
-        elif eid == std.EID_VEND_SPEC:
+        elif eid == std.EID_VEND_SPEC: # Std 8.4.2.28
             # split into tuple (tag,(oui,value))
-            vs = struct.unpack_from('=3B',info)
-            info = {'oui':":".join(['{0:02X}'.format(v) for v in vs]),
+            info = {'oui':_hwaddr_(struct.unpack_from('=3B',info)),
                     'content':info[3:]}
         else:
             info = {'rsrv':info}
@@ -1259,17 +1485,350 @@ def _parseie_(eid,info):
 # INFORMATION ELEMENT SUBELEMENT Std Fig 8-402
 # Subelement ID|Length|Data
 #             1|     1| var
-def _parseinfoelsubel_(info):
+def _iesubel_(s): return s # default subelement parsing, returns argument
+def _parseiesubel_(info,f=_iesubel_):
     """
      parse a variable length info element sub element
      :param info: packed string, next element starts at index 0
+     :param f: function to apply to each sub element for further parsing
+     :returns: list of parsed subelements
     """
     opt = []
-    while len(info) > 2: # catch any flags i.e. subelement len = 0
-        sid,slen = struct.unpack_from('=2B',info)
-        opt.append((sid,info[2:2+slen])) # two octets for sid, slen
-        info = info[2+slen:]
+    offset = 0
+    while len(info) >= 2: # may be flags (0-octet subelements)
+        sid,slen = struct.unpack_from('=2B',info,offset)
+        opt.append((sid,f(info[offset+2:offset+2+slen],sid)))
+        offset += 2 + slen
     return opt
+
+#### OPTIONAL SUBELEMENTS -> the sub element id and length have been stripped
+
+def _iesubelssid_(s):
+    """ :returns: a unicode ssid if able otherwise leave as is"""
+    try:
+        return s.decode('utf8')
+    except UnicodeDecodeError:
+        return s
+
+# Neighbor Report optional subelements Std Table 8-115 & figure commented below
+def _iesubelneighrpt_(s,sid):
+    """ :returns: parsed subelement for neighbor report """
+    # NOTE: where the optional subelements have the same format as an info_element
+    # the constant appears to be the same for the subelement id and for the info
+    # element id. However, just in case, we won't resuse the sid here
+    ret = s
+    if sid == std.EID_NR_TSF:
+        o,b = struct.unpack_from('=2H',s) # Std Fig 8-218, 8.4.1.3
+        ret = {'tsf-offset':o,'beacon-intv':b}
+    elif sid == std.EID_NR_COUNTRY_STRING:
+        # first 2 octets of the dot11CountryString (should be ascii?/utf-8?
+        try:
+            ret = s.decode('utf8')
+        except UnicodeDecodeError:
+            ret = s
+    elif sid == std.EID_NR_BSS_TX_CAND_PREF:
+        # Std Fig 8-219
+        ret = {'pref':struct.unpack_from('=B',s)[0]}
+    elif sid == std.EID_NR_BSS_TERM_DUR:
+        # Std Fig 8-220 |8|2|
+        t,d = struct.unpack_from('=QH',s)
+        ret = {'bss-term-tsf':t,'duration':d}
+    elif sid == std.EID_NR_BEARING:
+        # Bearing(2)|Distance(4)|Height(2)|
+        b,d,h = struct.unpack_from('=Hfh',s)
+        ret = {'bearing':b,'distance':d,'rel-height':h}
+    elif sid == std.EID_NR_HT_CAP:
+        # same format as ht capabilities (8.4.2.58)
+        ret = _parseie_(std.EID_HT_CAP,s)
+    elif sid == std.EID_NR_HT_OP:
+        # same format as ht operation (8.4.2.59)
+        ret = _parseie_(std.EID_HT_OP,s)
+    elif sid == std.EID_NR_SEC_CH_OFFSET:
+        # same format as secondary channel offset (8.4.2.22)
+        ret = _parseie_(std.EID_SEC_CH_OFFSET,s)
+    elif sid == std.EID_NR_MSMT_PILOT_TX:
+        # same format as msmt pilot tx (8.4.2.44)
+        ret = _parseie_(std.EID_MSMT_PILOT,s)
+    elif sid == std.EID_NR_RM_ENABLED_CAP:
+        # same format as rm enabled capabilities (8.4.2.47)
+        ret = _parseie_(std.EID_RM_ENABLED,s)
+    elif sid == std.EID_NR_MULT_BSSID:
+        # same format as multiple bssid (8.4.2.48)
+        ret = _parseie_(std.EID_MUL_BSSID,s)
+    elif sid == std.EID_NR_VEND_SPEC:
+        # same format as vendor specific
+        ret = _parseie_(std.EID_NR_VEND_SPEC,s)
+    return ret
+
+# FTE optional subelements Std Table 8-121 & figure commented below
+def _iesubelfte_(s,sid):
+    """ :returns: parsed subelement of FTE element """
+    ret = s
+    if sid == std.EID_FTE_RSRV: pass
+    elif sid == std.EID_FTE_PMK_R1:
+        # a 6-octed key
+        ret = {'r1kh-id':struct.unpack_from('=Q',s+'\x00\x00')[0]}
+    elif sid == std.EID_FTE_GTK:
+        # Std Fig. 8-237 Key Info|Key Len|RSC|Wrapped Key
+        #                       2|      1|  8|      24-40
+        ki,kl,r = struct.unpack_from('=HBQ',s)
+        ret = {'key-info':{'key-id':bits.leastx(2,ki),
+                           'rsrv':bits.mostx(2,ki)},
+               'key-leng':kl,
+               'rsc':r,
+               'wrapped-key':binascii.hexlify(s[struct.calcsize('=HBQ'):])}
+    elif sid == std.EID_FTE_PMK_R0:
+        # variable length 1-48 octets
+        ret = {'r0kh-id':binascii.hexlify(s)}
+    elif sid == std.EID_FTE_IGTK:
+        # Std Fig 8-239 Key ID|IPN|Key Length|Wrapped Key
+        #                    2|  6|         1|         24
+        ki = struct.unpack_from('=H',s)[0]
+        ipn = struct.unpack_from('=Q',s[2:8]+'\x00\x00')[0]
+        kl = struct.unpack_from('=B',s,8)[0]
+        ret = {'key-id':ki,
+               'ipn':ipn,
+               'key-len':kl,
+               'wrapped-key':binascii.hexlify(s[9:])}
+    return ret
+
+# Diagnositc Report/Request optional subelements Std Table 8-143 & figures commented below
+def _iesubeldiag_(s,sid):
+    """ :returns: parsed diag rpt/req subelement """
+    ret = s
+    if sid == std.EID_DIAG_SUBELEMENT_CRED:
+        # Std Fig. 8-288 TODO: see Table 8-144. Is this a list of 1-byte elements?
+        ret = {'cred-vals':[struct.unpack('=B',x)[0] for x in s]}
+    elif sid == std.EID_DIAG_SUBELEMENT_AKM:
+        # Fig 8-289
+        ret = {'oui':_hwaddr_(struct.unpack_from('=3B',s)),
+               'akm-suite':struct.unpack_from('=B',s,3)[0]}
+    elif sid == std.EID_DIAG_SUBELEMENT_AP:
+        # Fig 8-290
+        vs = struct.unpack_from('=8B',s)
+        ret = {'bssid':_hwaddr_(vs[0:6]),
+               'op-class':vs[6],
+               'ch-num':vs[7]}
+    elif sid == std.EID_DIAG_SUBELEMENT_ANT:
+        # Std Fig. 8-291
+        c,g = struct.unpack_from('=2B',s)
+        ret = {'ant-cnt':c,'ant-gain':g,'ant-type':s[2:]}
+    elif sid == std.EID_DIAG_SUBELEMENT_CS:
+        # Std Fig. 8-292
+        ret = {'oui':_hwaddr_(struct.unpack_from('=3B',s)),
+               'suite-type':struct.unpack_from('=B',s,3)[0]}
+    elif sid == std.EID_DIAG_SUBELEMENT_RDO:
+        # Std Fig. 8-293
+        ret = {'rdo-type':struct.unpack_from('=B',s)[0]}
+    elif sid == std.EID_DIAG_SUBELEMENT_DEV:
+        # Std Fig. 8-294
+        ret = {'dev-type':struct.unpack_from('=B',s)[0]}
+    elif sid == std.EID_DIAG_SUBELEMENT_EAP:
+        # Std fig 8-295
+        ret = {'eap-type':struct.unpack_from('=B',s)[0]}
+        if ret['eap-type'] == 254:
+            ret['eap-vend-id'] = _hwaddr_(struct.unpack_from('=3B',s,1))
+            ret['eap-vend-type'] = struct.unpack_from('=I',s,4)[0]
+    elif sid == std.EID_DIAG_SUBELEMENT_FW:
+        # Std Fig. 8-296
+        ret = {'fw-vers':s}
+    elif sid == std.EID_DIAG_SUBELEMENT_MAC:
+        # Std Fig. 8-297
+        ret = {'mac-addr':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_DIAG_SUBELEMENT_MANUF_ID:
+        # Std Fig. 8-298
+        ret = {'manuf-id':s}
+    elif sid == std.EID_DIAG_SUBELEMENT_MANUF_MODEL:
+        # Std Fig. 8-299
+        ret = {'manuf-model':s}
+    elif sid == std.EID_DIAG_SUBELEMENT_MANUF_OI:
+        # Std Fig. 8-300
+        fmt = '=3B' if len(s) == 3 else '=5B'
+        ret = {'manuf-oi':_hwaddr_(struct.unpack_from(fmt,s))}
+    elif sid == std.EID_DIAG_SUBELEMENT_MANUF_SER:
+        # Std Fig. 8-301
+        ret = {'manuf-ser-num':s}
+    elif sid == std.EID_DIAG_SUBELEMENT_POW_SAVE:
+        # Std Fig. 8-302
+        ret = _eiddiagsubelps_(struct.unpack_from('=I',s)[0])
+    elif sid == std.EID_DIAG_SUBELEMENT_PROFILE:
+        # Std Fig 8-303
+        ret = {'profile-id':struct.unpack_from('=B',s[0])}
+    elif sid == std.EID_DIAG_SUBELEMENT_OP_CLASSES:
+        # Std Fig 8-304 same as supported operating classes
+        ret = _parseie_(std.EID_OP_CLASSES,s)
+    elif sid == std.EID_DIAG_SUBELEMENT_STATUS:
+        # Std Fig 8-305
+        ret = {'stat-code':struct.unpack_from('=H',s)[0]}
+    elif sid == std.EID_DIAG_SUBELEMENT_SSID:
+        # Std Fig 8-306
+        ret = {'ssid':_parseie_(std.EID_SSID,s)}
+    elif sid == std.EID_DIAG_SUBELEMENT_TX_POWER:
+        # Std Fig. 8-307
+        # TODO: parse tx-power - each tx power is encoded in a single octet
+        # as a twos complement value in dBm
+        ret = {'tx-pwr-mode':struct.unpack_from('=B',s)[0],
+               'tx-power':[struct.unpack_from('=B',x)[0] for x in s[1:]]}
+    elif sid == std.EID_DIAG_SUBELEMENT_CERT:
+        # Std Fig. 8-308
+        ret = {'cert-id':s}
+    elif sid == std.EID_DIAG_SUBELEMENT_VEND:
+        # same as vendor specific
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# DIAGNOSTIC REPORT/REQUEST->Power save subelement -> bitmap Std Table 8-147
+_EID_DIAG_SUBELEMENT_PS_ = {
+    'unknown':(1<<0),
+    'none':(1<<1),
+    'ps-mode-1':(1<<2),
+    'ps-mode-2':(1<<3),
+    'u-apsd':(1<<4),
+    's-apsd':(1<<5),
+    'u-psmp':(1<<6),
+    's-psmp':(1<<7),
+    'sm-pow-save':(1<<8),
+    'wnm-sleep':(1<<9),
+    'fms':(1<<10),
+    'tim-bcast':(1<<11),
+    'tfs':(1<<12),
+    'tdls-peer-uapsd':(1<<13),
+    'tdls-peer-psm':(1<<14),
+}
+_EID_DIAG_SUBELEMENT_PS_DIVIDER_ = 15
+def _eiddiagsubelps_(v):
+    """ :returns: parsed power save mode subelement """
+    ps = bits.bitmask_list(_EID_DIAG_SUBELEMENT_PS_,v)
+    ps['rsrv'] = bits.mostx(_EID_DIAG_SUBELEMENT_PS_DIVIDER_,v)
+    return ps
+
+# LOCATION ELEMENT subelements Std Table 8-153 & figures commented below
+def _iesubelloc_(s,sid):
+    """ :returns: parsed location subelement """
+    ret = s
+    if sid == std.EID_LOCATION_SUBELEMENT_LIP: # Fig 8-311
+        addr = _hwaddr_(struct.unpack_from('=6B',s)[0])
+        vs = struct.unpack_from('=BHBH4B',s,6)
+        ret = {'mcast-addr':addr,
+               'rpt-intv-units':vs[0],
+               'normal-rpt-intv':vs[1],
+               'normal-num-frames':vs[2],
+               'in-motion-rpt-intv':vs[3],
+               'in-motion-num-frames':vs[4],
+               'burst-inter-frame-intv':vs[5],
+               'tracking-dur':vs[6],
+               'ess-detect-intv':vs[7]}
+    elif sid == std.EID_LOCATION_SUBELEMENT_LIC: # Fig 8-312
+        e = []
+        offset = 0
+        while len(s) > offset:
+            o,c = struct.unpack_from('=2B',s,offset)
+            e.append({'op-class':o,'ch':c})
+        ret = {'ch-entry':e}
+    elif sid == std.EID_LOCATION_SUBELEMENT_STATUS: # Fig 8-314
+        c,s = struct.unpack_from('=2B',s)
+        ret = {'config-sub-id':c,'status':s}
+    elif sid == std.EID_LOCATION_SUBELEMENT_RDO_INFO: # Fig 8-315
+        p,i,g,rs,rc = struct.unpack_from('=bBb2B',s)
+        ret = {'tx-pwr':p,'ant-id':i,'ant-gain':g,'rsni':rs,'rcpi':rc}
+    elif sid == std.EID_LOCATION_SUBELEMENT_MOTION: # Fig 8-316
+        m,b,s,h,v = struct.unpack_from('=BHB2H',s)
+        ret = {'motion-indicator':m,
+               'bearing':b,
+               'speed-units':s,
+               'hor-speed':h,
+               'ver-speed':v}
+    elif sid == std.EID_LOCATION_SUBELEMENT_LIBDR: # Fig 8-317
+        # defined in Std 8.4.1.32 in Figs. 8-69 and 8-70
+        m,i,r = struct.unpack_from('=2BH',s)[0]
+        ret = {'bcast-tgt-data-rate':{'mask':_rateidmask_(m),
+                                      'mcs-index':i,
+                                      'rate':r}}
+    elif sid == std.EID_LOCATION_SUBELEMENT_DEPT_TIME: # Fig 8-318
+        t,r,c = struct.unpack_from('=I2H',s)
+        ret = {'tod-ts':t,'tod-rms':r,'tod-clock-rate':c}
+    elif sid == std.EID_LOCATION_SUBELEMENT_LIO: # Fig. 8-319
+        opts = struct.unpack_from('=B',s)[0]
+        ret = {'opts':{'beacon-msmt-mode':bits.leastx(1,opts),
+                       'rsrv':bits.mostx(1,opts)},
+               'indication-params':ret[1:]}
+    elif sid == std.EID_LOCATION_SUBELEMENT_VENDOR:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# RATE IDENTIFICATION FIELD Std Fig 8-70
+_RATE_ID_MASK_SEL_DIVIDER_ = 3
+_RATE_ID_MASK_RT_START_    = 3
+_RATE_ID_MASK_RT_LEN_      = 2
+_RATE_ID_MASK_RSRV_START_  = 5
+def _rateidmask_(v):
+    """ :returns: parsed rate identification field mask """
+    rim = {}
+    rim['mcs-sel'] = bits.leastx(_RATE_ID_MASK_SEL_DIVIDER_,v)
+    rim['rate-type'] = bits.midx(_RATE_ID_MASK_RT_START_,
+                                 _RATE_ID_MASK_RT_LEN_,
+                                 v)
+    rim['rsrv'] = bits.mostx(_RATE_ID_MASK_RSRV_START_,v)
+    return rim
+
+# FMS Request subelements Std Table 8-158 & figures commented below
+def _iesubelfmsreq_(s,sid):
+    """ :returns: parsed fms request subelement """
+    ret = s
+    if sid == std.EID_FMS_REQ_SUBELEMENT_FMS: # Std Fig. 8-327
+        # Note: the 4-byte rate identification is defined in 8.4.1.32
+        # as 1|1|2
+        di,mi,m,i,r = struct.unpack_from('=4BH',s)
+        ret = {'delv-intv':di,
+               'max-delv-intv':mi,
+               'rate-ident':{'mask':_rateidmask_(m),
+                             'mcs-index':i,
+                             'rate':r},
+               'unparsed':s[6:]}
+    elif sid == std.EID_FMS_REQ_SUBELEMENT_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# FMS Response subelements Std Table 8-159 & figures commented below
+def _iesubelfmsresp_(s,sid):
+    """ :returns: parsed fms response subelement """
+    ret = s
+    if sid == std.EID_FMS_RESP_SUBELEMENT_FMS: # Std Fig. 8-329
+        vs = struct.unpack_from('=7BH',s)
+        a = _hwaddr_(struct.unpack_from('=6B',s,struct.calcsize('=7BH')))
+        ret = {'el-stat':vs[0],
+               'delv-intv':vs[1],
+               'max-delv-intv':vs[2],
+               'fms-id':vs[3],
+               'fms-cntr':vs[4],
+               'rate-ident':{'mask':_rateidmask_(vs[5]),
+                             'mcs-index':vs[6],
+                             'rate':vs[7]},
+               'mcast-addr':a}
+    elif sid == std.EID_FMS_RESP_SUBELEMENT_TCLAS: # Std Fig. 8-330
+        ret = {'fms-id':struct.unpack_from('=B',s),
+               'unparsed':s[1:]}
+    elif sid == std.EID_FMS_RESP_SUBELEMENT_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# TFS Request subelements Std Table 8-163 & figures commented below
+def _iesubeltfsreq_(s,sid):
+    """ :returns: parsed tfs request subelement """
+    ret = s
+    if sid == std.EID_TFS_SUBELEMENT_TFS:
+        ret = {'unparsed':s}
+    elif sid == std.EID_TFS_SUBELEMENT_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Pilot subelements Std Table 8-117
+def _iesubelmsmtpilot_(s,sid):
+    """ :returns: parsed msmt pilot subelement"""
+    ret = s
+    # ATT only vendor specific is defined
+    if sid == std.EID_VEND_SPEC: ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
 
 # SUPPORTED RATES/EXTENDED RATES Std 8.4.2.3 and 8.4.2.15
 # Std 6.5.5.2 table of rates not contained in the BSSBasicRateSet
@@ -1277,7 +1836,7 @@ def _parseinfoelsubel_(info):
 # the number in bits 0-6 to 0.5 * times that number which is the same thing
 # that happens if MSB is set to 1 ????
 _RATE_DIVIDER_ = 7
-def _getrate_(val): return bits.leastx(_RATE_DIVIDER_,val) * 0.5
+def _eidrates_(val): return bits.leastx(_RATE_DIVIDER_,val) * 0.5
 
 # ERP Parameters
 # Std 8.4.2.14
@@ -1296,7 +1855,7 @@ _EID_SEC_CH_OFFSET_SCN_ = 0
 _EID_SEC_CH_OFFSET_SCA_ = 1
 _EID_SEC_CH_OFFSET_SCB_ = 3
 # NOTE: 2, & 4-255 are reserved
-def _secchoffset_(v):
+def _edisecchoffset_(v):
     """ :returns: human readable secondary channel offset value """
     if v == _EID_SEC_CH_OFFSET_SCN_: return 'scn'
     elif v == _EID_SEC_CH_OFFSET_SCA_: return 'sca'
@@ -1346,8 +1905,13 @@ std.EID_TIE_TYPE_COMEBACK = 3
 # 20/40 Coexistence information field Std Figure 8-260
 # Info Re1|40 Intolerant|20 Request|Exempt Request|Exempt Grant|Reserved
 #       B0|           B1|        B2|            B3|          B4|B5-B7
-_EID_20_40_COEXIST_ = {'info-req':(1<<0),'40-intol':(1<<1),'20-req':(1<<2),
-                       'exempt-req':(1<<3),'exempt-grant':(1<<4)}
+_EID_20_40_COEXIST_ = {
+    'info-req':(1<<0),
+    '40-intol':(1<<1),
+    '20-req':(1<<2),
+    'exempt-req':(1<<3),
+    'exempt-grant':(1<<4)
+}
 _EID_20_40_COEXIST_RSRV_START_ = 5
 def _eid2040coexist_(v):
     """ :returns: parsed 20/40 coexistence Info. field """
@@ -1358,7 +1922,12 @@ def _eid2040coexist_(v):
 # TPU Buffer Status Std Figure 8-266
 # AC_BK Traf|AC_BE Traf|AC_VI Traf|AC_VO_Traf|Reserved
 #         B0|        B1|        B2|        B3| B4-B7
-_EID_TPU_BUFF_STATUS_ = {'ac-bk':(1<<0),'ac-be':(1<<1),'ac-vi':(1<<2),'ac-vo':(1<<3)}
+_EID_TPU_BUFF_STATUS_ = {
+    'ac-bk':(1<<0),
+    'ac-be':(1<<1),
+    'ac-vi':(1<<2),
+    'ac-vo':(1<<3)
+}
 _EID_TPU_BUFF_STATUS_RSRV_START_ = 4
 def _eidtpubuffstat_(v):
     """ :returns: parsed TPU buffer status """
@@ -1366,12 +1935,19 @@ def _eidtpubuffstat_(v):
     bs['rsrv'] = bits.mostx(_EID_TPU_BUFF_STATUS_RSRV_START_,v)
     return bs
 
-# BSS Max Idle Period -> Idle Options # Std Figure 8-333
+# BSS Max Idle Period -> Idle Options Std Fig 8-333
 _EID_BSS_MAX_IDLE_PRO_ = 1
 def _eidbssmaxidle_(v):
     """ :returns: parsed idle options field """
     return {'pro-keep-alive':bits.leastx(_EID_BSS_MAX_IDLE_PRO_,v),
             'rsrv':bits.mostx(_EID_BSS_MAX_IDLE_PRO_,v)}
+
+# Advertisement Protocol -> Query Response Info Std Fig 8-354
+EID_ADV_PROTOCOL_QRI_DIVIDER_ = 7
+def _eidadvprotoqryrep_(v):
+    """ :returns: parsed query response info """
+    return {'qry-res-len-limit':bits.leastx(EID_ADV_PROTOCOL_QRI_DIVIDER_,v),
+            'PAME-BI':bits.mostx(EID_ADV_PROTOCOL_QRI_DIVIDER_,v)}
 
 # Mesh formation info Std Figure 8-364
 # Conneected Mesh|Peerings|Connected AS
@@ -1387,9 +1963,16 @@ def _eidmeshconfigform_(v):
     return mf
 
 # Mesh capability Std Figure 8-365
-_EID_MESH_CONFIG_CAP_ = {'accept':(1<<0),'mcca-support':(1<<1),
-                         'mcca-enable':(1<<2),'forwarding':(1<<3),'mbca':(1<<4),
-                         'tbtt':(1<<5),'pwr-save':(1<<6),'rsrv':(1<<7)}
+_EID_MESH_CONFIG_CAP_ = {
+    'accept':(1<<0),
+    'mcca-support':(1<<1),
+    'mcca-enable':(1<<2),
+    'forwarding':(1<<3),
+    'mbca':(1<<4),
+    'tbtt':(1<<5),
+    'pwr-save':(1<<6),
+    'rsrv':(1<<7)
+}
 def _eidmeshconfigcap_(v):
     """ :returns: parsed mesh capability field """
     return bits.bitmask_list(_EID_MESH_CONFIG_CAP_,v)
@@ -1397,7 +1980,11 @@ def _eidmeshconfigcap_(v):
 # Mesh Channel Switch Parameters flags field definition Std Fig 8-372
 # Transmit Restrict|Initiator|Reason|Reserved
 #                B0|       B!|    B2|B3-B7
-_EID_MESH_CH_SWITCH_FLAGS_ = {'tx-restrict':(1<<0),'initiator':(1<<1),'reason':(1<<2)}
+_EID_MESH_CH_SWITCH_FLAGS_ = {
+    'tx-restrict':(1<<0),
+    'initiator':(1<<1),
+    'reason':(1<<2)
+}
 _EID_MESH_CH_SWITCH_FLAGS_RSRV_START_ = 3
 def _eidmeshchswitch_(v):
     """ :returns: parsed mesh channel switch flags field """
@@ -1424,15 +2011,98 @@ def _eidedcaecw_(v):
     return {'min':bits.leastx(_EID_EDCA_ECW_SPLIT_,v),
             'max':bits.mostx(_EID_EDCA_ECW_SPLIT_,v)}
 
-#### HT CAPABILITIES Std 8.4.2.58
+# ts info of the TSPEC element Std Fig 8-197
+# NOTE: ts info is a 3-octet field
+_EID_TSPEC_TSINFO_ = {
+    'traffic-type':(1<<0),
+    'aggregation':(1<<9),
+    'apsd':(1<<10),
+    'schedule':(1<<16)
+}
+_EID_TSPEC_TSINFO_TSID_START_   =  1
+_EID_TSPEC_TSINFO_TSID_LEN_     =  4
+_EID_TSPEC_TSINFO_DIR_START_    =  5
+_EID_TSPEC_TSINFO_DIR_LEN_      =  2
+_EID_TSPEC_TSINFO_APOL_START_   =  7
+_EID_TSPEC_TSINFO_APOL_LEN_     =  2
+_EID_TSPEC_TSINFO_UPRI_START_   = 11
+_EID_TSPEC_TSINFO_UPRI_LEN_     =  3
+_EID_TSPEC_TSINFO_ACKPOL_START_ = 14
+_EID_TSPEC_TSINFO_ACKPOL_LEN_   =  2
+_EID_TSPEC_TSINFO_RSRV_START_   = 17
+def _eidtspectsinfo_(v):
+    """ :returns: parsed ts-info field """
+    tsi = bits.bitmask_list(_EID_TSPEC_TSINFO_,v)
+    tsi['tsid'] = bits.midx(_EID_TSPEC_TSINFO_TSID_START_,
+                            _EID_TSPEC_TSINFO_TSID_LEN_,
+                            v)
+    tsi['dir'] = bits.midx(_EID_TSPEC_TSINFO_DIR_START_,
+                           _EID_TSPEC_TSINFO_DIR_LEN_,
+                           v)
+    tsi['access-pol'] = bits.midx(_EID_TSPEC_TSINFO_APOL_START_,
+                                  _EID_TSPEC_TSINFO_APOL_LEN_,
+                                  v)
+    tsi['user-pri'] = bits.midx(_EID_TSPEC_TSINFO_UPRI_START_,
+                                _EID_TSPEC_TSINFO_UPRI_LEN_,
+                                v)
+    tsi['ack-pol'] = bits.midx(_EID_TSPEC_TSINFO_ACKPOL_START_,
+                               _EID_TSPEC_TSINFO_ACKPOL_LEN_,
+                               v)
+    tsi['rsrv'] = bits.mostx(_EID_TSPEC_TSINFO_RSRV_START_,v)
+    return tsi
+
+# DES Registered location element subfields Std Fig 8-244
+# unlike others, DSE is a not a byte oriented field. We define the fields as
+# a list of tuples (Name,Start Bit,Length,Num Nulls,Format)
+# NOTE: while we could treat datum,reg-loc-agree,reg-loc-dse,depend-sta &
+# reserved a single 1-byte field, we decided to leave in the same format
+_EID_DSE_FIELDS_ = [
+    ('lat-res',0,6,2,'=B'),
+    ('lat-frac',6,25,7,'=I'),
+    ('lat-int',31,9,7,'=H'),
+    ('lon-res',40,6,2,'=B'),
+    ('lon-frac',46,25,7,'=I'),
+    ('lon-int',71,9,7,'=H'),
+    ('alt-type',80,4,4,'=B'),
+    ('alt-res',84,6,2,'=B'),
+    ('alt-frac',90,8,0,'=B'),
+    ('alt-int',98,22,10,'=I'),
+    ('datum',120,3,5,'=B'),
+    ('reg-loc-agree',123,1,7,'=B'),
+    ('reg-loc-dse',124,1,7,'=B'),
+    ('depend-sta',125,1,7,'=B'),
+    ('rsrv',126,2,6,'=B')
+]
+def _parseinfoeldse_(s):
+    """ :returns: parsed dse location from packed string s """
+    dse = {}
+    for n,i,l,x,f in _EID_DSE_FIELDS_:
+        dse[n] = struct.unpack_from(f,s[i:i+l]+'\x00'*2)
+
+    # last three fields are byte centric
+    dei,op,chn = struct.unpack_from('=H2B',s,len(s)-4)
+    dse['depend-enable-id'] = dei
+    dse['op-class'] = op
+    dse['ch-num'] = chn
+    return dse
 
 # HT Capabilities Info field Std Fig 8-249
 # octest are defined as 1|1|2|1|1|1|1|2|1|1|1|1|1|1 see Fig 8-249 for names
 # See also Std Table 8-124 for definition of sub fields
-_EID_HT_CAP_HTI_ = {'ldpc-cap':(1<<0),'ch-width-set':(1<<1),'ht-greenfield':(1<<4),
-                    'short-gi-20':(1<<5),'short-gi-40':(1<<6),'tx-stbc':(1<<7),
-                    'ht-delay-back':(1<<10),'max-amsdu':(1<<11),'dsss-cck-mod':(1<<12),
-                    'rsrv':(1<<13),'40-intolerant':(1<<14),'lsig-txop-pro':(1<<15)}
+_EID_HT_CAP_HTI_ = {
+    'ldpc-cap':(1<<0),
+    'ch-width-set':(1<<1),
+    'ht-greenfield':(1<<4),
+    'short-gi-20':(1<<5),
+    'short-gi-40':(1<<6),
+    'tx-stbc':(1<<7),
+    'ht-delay-back':(1<<10),
+    'max-amsdu':(1<<11),
+    'dsss-cck-mod':(1<<12),
+    'rsrv':(1<<13),
+    '40-intolerant':(1<<14),
+    'lsig-txop-pro':(1<<15)
+}
 _EID_HT_CAP_HTI_SM_PWR_START_  = 2
 _EID_HT_CAP_HTI_SM_PWR_LEN_    = 2
 _EID_HT_CAP_HTI_RX_STBC_START_ = 8
@@ -1543,14 +2213,16 @@ def _eidhtcaptxbf_(v):
     return txbf
 
 # Transmit Beamforming Capabilities Std Fig 8-254
-_EID_HT_CAP_ASEL_ = {'ant-sel':(1<<0),       # antenna selection capable
-                     'csi-asel-cap':(1<<1),  # explicit cs feedback based tx ASEL capable
-                     'ant-asel-cap':(1<<2),  # antenna indices feedback based tx ASEL capable
-                     'csi-cap':(1<<3),       # explicit csi feedback capable
-                     'ant-cap':(1<<4),       # antenna indices feedback capable
-                     'recv-asel-cap':(1<<5), # receive ASEL capable
-                     'tx-ppdu-cap':(1<<6),   # tx sounding PPDUs capable
-                     'rsrv':(1<<7)}
+_EID_HT_CAP_ASEL_ = {
+    'ant-sel':(1<<0),       # antenna selection capable
+    'csi-asel-cap':(1<<1),  # explicit cs feedback based tx ASEL capable
+    'ant-asel-cap':(1<<2),  # antenna indices feedback based tx ASEL capable
+    'csi-cap':(1<<3),       # explicit csi feedback capable
+    'ant-cap':(1<<4),       # antenna indices feedback capable
+    'recv-asel-cap':(1<<5), # receive ASEL capable
+    'tx-ppdu-cap':(1<<6),   # tx sounding PPDUs capable
+    'rsrv':(1<<7)
+}
 def _eidhtcapasel_(v):
     """ :returns: parsed ASEL capability field """
     return bits.bitmask_list(_EID_HT_CAP_ASEL_,v)
@@ -1561,8 +2233,14 @@ def _eidhtcapasel_(v):
 _EID_QOS_CAP_AP_ = {'q-ack':(1<<4),'q-req':(1<<5),'txop-req':(1<<6),'rsrv':(1<<7)}
 _EID_QOS_CAP_AP_DIVIDER_ = 4
 # Sent by non-AP
-_EID_QOS_CAP_NON_AP_ = {'ac-vo':(1<<0),'ac-vi':(1<<1),'ac-bk':(1<<2),'ac-be':(1<<3),
-                        'q-ack':(1<<4),'more-data':(1<<7)}
+_EID_QOS_CAP_NON_AP_ = {
+    'ac-vo':(1<<0),
+    'ac-vi':(1<<1),
+    'ac-bk':(1<<2),
+    'ac-be':(1<<3),
+    'q-ack':(1<<4),
+    'more-data':(1<<7)
+}
 _EID_QOS_CAP_NON_AP_MAX_SP_START_ = 5
 _EID_QOS_CAP_NON_AP_MAX_SP_LEN_   = 2
 def _eidqoscap_(v,ap=True):
@@ -1577,13 +2255,81 @@ def _eidqoscap_(v,ap=True):
                                      v)
     return qc
 
+# Measurement Request Mode of the Measurement request element Std Fig 8-105
+_EID_MSMT_REQ_MODE_ = {
+    'parallel':(1<<0),
+    'enable':(1<<1),
+    'request':(1<<2),
+    'report':(1<<3),
+    'dur-mandatory':(1<<4)
+}
+_EID_MSMT_REQ_MODE_RSRV_START_ = 5
+def _eidmsmtreqmode_(v):
+    """ :returns: parsed msmt request mode field """
+    rm = bits.bitmask_list(_EID_MSMT_REQ_MODE_,v)
+    rm['rsrv'] = bits.mostx(_EID_MSMT_REQ_MODE_RSRV_START_,v)
+    return rm
+
 # Suite Selector Std Figure 8-187
-def _eidrsnsuitesel_(v):
+def _eidrsnesuitesel_(v):
     """
      :param v: list of 4 1-octet ints
      :returns: the suite selector dict
     """
-    return {'oui':_hwaddr_(v[0:3]),'suite-type':v[-1]}
+    return {'oui':_hwaddr_(v[0:3]).replace(':','-'),'suite-type':v[-1]}
+
+# RSN capabilities of the RSNE Std Fig 8-188
+_EID_RSNE_CAP_ = {
+    'preauth':(1<<0),
+    'no-pairwise':(1<<1),
+    'mfpr':(1<<6),
+    'mfpc':(1<<7),
+    'rsrv-1':(1<<8),
+    'peerkey-enabled':(1<<9),
+    'spp-amsdu-cap':(1<<10),
+    'spp-amsdu-req':(1<<11),
+    'pbac':(1<<12),
+    'ext-key-id':(1<<13)
+}
+_EID_RSNE_CAP_PTKSA_START_ =  2
+_EID_RSNE_CAP_PTKSA_LEN_   =  2
+_EID_RSNE_CAP_GTKSA_START_ =  4
+_EID_RSNE_CAP_GTKSA_LEN_   =  2
+_EID_RSNE_CAP_RSRV2_START_ = 14
+def _eidrsnecap_(v):
+    """ :returns: parsed rsn capabilities field """
+    rc = bits.bitmask_list(_EID_RSNE_CAP_,v)
+    rc['ptksa-replay-cntr'] = bits.midx(_EID_RSNE_CAP_PTKSA_START_,
+                                        _EID_RSNE_CAP_PTKSA_LEN_,
+                                        v)
+    rc['gtksa-replay-cntr'] = bits.midx(_EID_RSNE_CAP_GTKSA_START_,
+                                        _EID_RSNE_CAP_GTKSA_LEN_,
+                                        v)
+    rc['rsrv-2'] = bits.mostx(_EID_RSNE_CAP_RSRV2_START_,v)
+    return rc
+
+# Mesaurment Report Mode of the Measurement report element Std Fig 8-141
+_EID_MSMT_RPT_MODE_ = {'late':(1<<0),'incapable':(1<<1),'refused':(1<<2)}
+_EID_MSMT_RPT_MODE_RSRV_START_ = 3
+def _eidmstrptmode_(v):
+    """ :returns: parsed msmt rpt mode """
+    rm = bits.bitmask_list(_EID_MSMT_RPT_MODE_,v)
+    rm['rsrv'] = bits.mostx(_EID_MSMT_RPT_MODE_RSRV_START_,v)
+    return rm
+
+# Channel Map Std Fig 8-143 (Used by multiple info elements)
+_EID_MULT_CH_MAP_ = {
+    'bss':(1<<0),
+    'ofdm-pre':(1<<1),
+    'unidentified':(1<<2),
+    'radar':(1<<3),
+    'unmeasured':(1<<4)
+}
+_EID_MULT_CH_MAP_RSRV_START_ = 5
+def _eidmultchmap_(v):
+    """ :returns: parsed channel map """
+    cm = bits.bitmask_list(_EID_MULT_CH_MAP_,v)
+    cm['rsrv'] = bits.mostx(_EID_MULT_CH_MAP_RSRV_START_,v)
 
 # Neighbor Report BSSID Info subfield Std Fig 8-216
 # AP Reachability|Security|Key Scope|Capabilities|Mobility Dom| HT|Reserved
@@ -1591,11 +2337,18 @@ def _eidrsnsuitesel_(v):
 # where capabilties is defined as Std Fig 8-127
 # Spec MGMT|QoS|APSD|RDO MSMT|DEL Block ACK|Immediate Block Ack
 #         1|  2|   3|       4|            5|                  6
-_EID_NEIGHBOR_REPORT_BSSID_INFO_ = {'security':(1<<2),'key-scope':(1<<3),
-                                    'spec-mgmt':(1<<4),'qos':(1<<5),
-                                    'apsd':(1<<6),'rdo-msmt':(1<<7),
-                                    'del-back':(1<<8),'imm-back':(1<<9),
-                                    'mob-dom':(1<<10),'ht':(1<<11)}
+_EID_NEIGHBOR_REPORT_BSSID_INFO_ = {
+    'security':(1<<2),
+    'key-scope':(1<<3),
+    'spec-mgmt':(1<<4),
+    'qos':(1<<5),
+    'apsd':(1<<6),
+    'rdo-msmt':(1<<7),
+    'del-back':(1<<8),
+    'imm-back':(1<<9),
+    'mob-dom':(1<<10),
+    'ht':(1<<11)
+}
 _EID_NEIGHBOR_REPORT_BSSID_INFO_REACH_DIVIDER_    =  2
 _EID_NEIGHBOR_REPORT_BSSID_INFO_CAPS_START_       =  4
 _EID_NEIGHBOR_REPORT_BSSID_INFO_CAPS_LEN_         =  6
@@ -1626,8 +2379,14 @@ _EID_HT_OP_HT_OP2_RSRV_START_ = 5
 # Reserved|Dual Beacon|Dual CTS|STBC Beacon|L-SIX TXOP|PCO Active|PCO Phase|Reserved
 #  B24-B29|        B30|     B31|        B32|       B33|       B34|      B35|B36-B39
 #  <B0-B5>|       <B6>|    <B7>|       <B8>|      <B9>|     <B10>|    <B11>|<B12>-<B15>
-_EID_HT_OP_HT_OP3_ = {'dual-beacon':(1<<6),'dual-cts':(1<<7),'stbc-beacon':(1<<8),
-                      'lsig-txop-pro':(1<<9),'pco-active':(1<<10),'pco-phase':(1<<11)}
+_EID_HT_OP_HT_OP3_ = {
+    'dual-beacon':(1<<6),
+    'dual-cts':(1<<7),
+    'stbc-beacon':(1<<8),
+    'lsig-txop-pro':(1<<9),
+    'pco-active':(1<<10),
+    'pco-phase':(1<<11)
+}
 _EID_HT_OP_HT_OP3_DIVIDER_    =  6
 _EID_HT_OP_HT_OP3_RSRV_START_ = 12
 def _eidhtopinfo_(h1,h2,h3):

@@ -115,235 +115,6 @@ QOS_AC_VI_VI = 5
 QOS_AC_VO_VO = 6
 QOS_AC_VO_NC = 7
 
-#### MGMT FRAMES
-
-# CONSTANTS for action frames Std 8.5.1
-SPEC_MGMT_MEAS_REQ  = 0
-SPEC_MGMT_MEAS_REP  = 1
-SPEC_MGMT_TPC_REQ   = 2
-SPEC_MGMT_TPC_REP   = 3
-SPEC_MGMT_CH_SWITCH = 4
-
-# CONSTANTS for element ids Std 8.4.2.1
-# reserved 17 to 31, 47, 49, 128, 129, 133-136, 143-173, 175-220, 222-255
-# undefined 77,103
-EID_SSID                    =   0
-EID_SUPPORTED_RATES         =   1
-EID_FH                      =   2
-EID_DSSS                    =   3
-EID_CF                      =   4
-EID_TIM                     =   5
-EID_IBSS                    =   6
-EID_COUNTRY                 =   7
-EID_HOP_PARAMS              =   8
-EID_HOP_TABLE               =   9
-EID_REQUEST                 =  10
-EID_BSS_LOAD                =  11
-EID_EDCA                    =  12
-EID_TSPEC                   =  13
-EID_TCLAS                   =  14
-EID_SCHED                   =  15
-EID_CHALLENGE               =  16
-EID_PWR_CONSTRAINT          =  32
-EID_PWR_CAPABILITY          =  33
-EID_TPC_REQ                 =  34
-EID_TPC_RPT                 =  35
-EID_CHANNELS                =  36
-EID_CH_SWITCH               =  37
-EID_MEAS_REQ                =  38
-EID_MEAS_RPT                =  39
-EID_QUIET                   =  40
-EID_IBSS_DFS                =  41
-EID_ERP                     =  42
-EID_TS_DELAY                =  43
-EID_TCLAS_PRO               =  44
-EID_HT_CAP                  =  45
-EID_QOS_CAP                 =  46
-EID_RSN                     =  48
-EID_EXTENDED_RATES          =  50
-EID_AP_CH_RPT               =  51
-EID_NEIGHBOR_RPT            =  52
-EID_RCPI                    =  53
-EID_MDE                     =  54
-EID_FTE                     =  55
-EID_TIE                     =  56
-EID_RDE                     =  57
-EID_DSE_REG_LOC             =  58
-EID_OP_CLASSES              =  59
-EID_EXT_CH_SWITCH           =  60
-EID_HT_OP                   =  61
-EID_SEC_CH_OFFSET           =  62
-EID_BSS_AVG_DELAY           =  63
-EID_ANTENNA                 =  64
-EID_RSNI                    =  65
-EID_MEAS_PILOT              =  66
-EID_BSS_AVAIL               =  67
-EID_BSS_AC_DELAY            =  68
-EID_TIME_ADV                =  69
-EID_RM_ENABLED              =  70
-EID_MUL_BSSID               =  71
-EID_20_40_COEXIST           =  72
-EID_20_40_INTOLERANT        =  73
-EID_OVERLAPPING_BSS         =  74
-EID_RIC_DESC                =  75
-EID_MGMT_MIC                =  76
-EID_EVENT_REQ               =  78
-EID_EVENT_RPT               =  79
-EID_DIAG_REQ                =  80
-EID_DIAG_RPT                =  81
-EID_LOCATION                =  82
-EID_NONTRANS_BSS            =  83
-EID_SSID_LIST               =  84
-EID_MULT_BSSID_INDEX        =  85
-EID_FMS_DESC                =  86
-EID_FMS_REQ                 =  87
-EID_FMS_RESP                =  88
-EID_QOS_TRAFFIC_CAP         =  89
-EID_BSS_MAX_IDLE            =  90
-EID_TFS_REQ                 =  91
-EID_TFS_RESP                =  92
-EID_WNM_SLEEP               =  93
-EID_TIM_REQ                 =  94
-EID_TIM_RESP                =  95
-EID_COLLOCATED_INTERFERENCE =  96
-EID_CH_USAGE                =  97
-EID_TIME_ZONE               =  98
-EID_DMS_REQ                 =  99
-EID_DMS_RESP                = 100
-EID_LINK_ID                 = 101
-EID_WAKEUP_SCHED            = 102
-EID_CH_SWITCH_TIMING        = 104
-EID_PTI_CTRL                = 105
-EID_TPU_BUFF_STATUS         = 106
-EID_INTERWORKING            = 107
-EID_ADV_PROTOCOL            = 108
-EID_EXPEDITED_BW_REQ        = 109
-EID_QOS_MAP_SET             = 110
-EID_ROAMING_CONS            = 111
-EID_EMERGENCY_ALERT_ID      = 112
-EID_MESH_CONFIG             = 113
-EID_MESH_ID                 = 114
-EID_MESH_LINK_METRIC_RPT    = 115
-EID_CONGESTION              = 116
-EID_MESH_PEERING_MGMT       = 117
-EID_MESH_CH_SWITCH_PARAM    = 118
-EID_MESH_AWAKE_WIN          = 119
-EID_BEACON_TIMING           = 120
-EID_MCCAOP_SETUP_REQ        = 121
-EID_MCCAOP_SETUP_REP        = 122
-EID_MCCAOP_ADV              = 123
-EID_MCCAOP_TEARDOWN         = 124
-EID_GANN                    = 125
-EID_RANN                    = 126
-EID_EXT_CAP                 = 127
-EID_PREQ                    = 130
-EID_PREP                    = 131
-EID_PERR                    = 132
-EID_PXU                     = 137
-EID_PXUC                    = 138
-EID_AUTH_MESH_PEER_EXC      = 139
-EID_MIC                     = 140
-EID_DEST_URI                = 141
-EID_UAPSD_COEXIST           = 142
-EID_MCCAOP_ADV_OVERVIEW     = 174
-EID_VEND_SPEC               = 221
-
-# CONSTANTS for subelement ids Std Table 8-115
-# reserved 0, 6-44, 46-60, 67-69,72-220,222-255
-EID_SID_TSF = 1
-EID_SID_COUNTRY_STRING =   2
-EID_SID_BSS_TX_PREF    =   3
-EID_SID_BSS_TERM_DUR   =   4
-EID_SID_BEARING        =   5
-EID_SID_HT_CAP_SUB     =  45
-EID_SID_HT_OP          =  61
-EID_SID_SEC_CH_OFFSET  =  62
-EID_SID_MSMT_PILOT_TX  =  66
-EID_SID_RM_ENABLED_CAP =  70
-EID_SID_MULT_BSSID     =  71
-EID_SID_VEND_SPEC      = 221
-
-# WNM Sleep Mode constants See Std 10.2.1.18
-# Action type definitions Std Table 8-165
-EID_WNM_SLEEP_ACTION_ENTER = 0
-EID_WNM_SLEEP_ACTION_EXIT  = 1
-# NOTE 2-255 are reserved
-
-# Response Status definitions Std Table 8-166
-EID_WNM_SLEEP_STATUS_ACCEPT   = 0
-EID_WNM_SLEEP_STATUS_UPDATE   = 1
-EID_WNM_SLEEP_STATUS_DENIED   = 2 # AP cannot perform request
-EID_WNM_SLEEP_STATUS_TEMP     = 3 # temporary, try again later
-EID_WNM_SLEEP_STATUS_EXPIRE   = 4 # key is pending expiration
-EID_WNM_SLEEP_STATUS_SERVICES = 5 # STA has other WNM services in use
-# NOTE -255 are reserved
-
-# Expedited Bandwith Request Precedence level definitions Std Table 8-176
-EID_EXPEDITED_BW_REQ_CALL  = 16
-EID_EXPEDITED_BW_REQ_PUB   = 17
-EID_EXPEDITED_BW_REQ_PRIV  = 18
-EID_EXPEDITED_BW_REQ_LVL_A = 19
-EID_EXPEDITED_BW_REQ_LVL_B = 20
-EID_EXPEDITED_BW_REQ_LVL_0 = 21
-EID_EXPEDITED_BW_REQ_LVL_1 = 22
-EID_EXPEDITED_BW_REQ_LVL_2 = 23
-EID_EXPEDITED_BW_REQ_LVL_3 = 24
-EID_EXPEDITED_BW_REQ_LVL_4 = 25
-# NOTE 0-15 and 26-255 are reserved
-
-# Mesh configuration element definitions Std 8.4.2.100
-# Std Table 8-177
-EID_MESH_CONFIG_PATH_PROTO_HYBRID =   1
-EID_MESH_CONFIG_PATH_PROTO_VENDOR = 255
-# NOTE: 0, 2-254 are reserved
-
-# Std Table 8-178
-EID_MESH_CONFIG_PATH_METRIC_AIRTIME =   1
-EID_MESH_CONFIG_PATH_METRIC_VENDOR  = 255
-# NOTE: 0, 2-254 are reserved
-
-# Std Table 8-179
-EID_MESH_CONFIG_CONTROL_MODE_DEFAULT =   0
-EID_MESH_CONFIG_CONTROL_MODE_SIGNAL  =   1
-EID_MESH_CONFIG_CONTROL_MODE_VENDOR  = 255
-# NOTE 2-254 are reserved
-
-# Std Table 8-180
-EID_MESH_CONFIG_SYNC_MODE_NEIGHBOR =   1
-EID_MESH_CONFIG_SYNC_MODE_VENDOR   = 255
-# NOTE: 0, 2-254 are reserved
-
-# Std Table 8-181
-EID_MESH_CONFIG_AUTH_PROTO_NONE   =   0
-EID_MESH_CONFIG_AUTH_PROTO_SAE    =   1
-EID_MESH_CONFIG_AUTH_PROTO_8021X  =   2
-EID_MESH_CONFIG_AUTH_PROTO_VENDOR = 255
-# NOTE: 3-254 are reserved
-
-# Std Table 8-114
-EID_NEIGHBOR_RPT_AP_REACH_RSRV = 0
-EID_NEIGHBOR_RPT_AP_REACH_NO   = 1
-EID_NEIGHBOR_RPT_AP_REACH_UNK  = 2
-EID_NEIGHBOR_RPT_AP_REACH_YES  = 3
-
-# Std Table 8-174 (Access Network Types)
-EID_INTERWORKING_ANT_PRIV_NET        =  0
-EID_INTERWORKING_ANT_PRIV_NET_GUEST  =  1
-EID_INTERWORKING_ANT_PUB_NET_CHARGE  =  2
-EID_INTERWORKING_ANT_PUB_NET_FREE    =  3
-EID_INTERWORKING_ANT_PAN             =  4
-EID_INTERWORKING_ANT_EMERG_SERVICE   =  5
-EID_INTERWORKING_ANT_TEST            = 14
-EID_INTERWORKING_ANT_WILDCARD        = 15
-# NOTE: 6 to 13 are reserved
-
-# Std Table 8-183 (MCCA Reply Code values)
-EID_MCCA_REPLY_CODE_ACCEPT           = 0
-EID_MCCA_REPLY_CODE_REJECT_CONFLICT  = 1 # MCCAOP resrvation conflict
-EID_MCCA_REPLY_CODE_REJECT_MAF_LIM   = 2 # MAF limit exceeded
-EID_MCCA_REPLY_CODE_REJECT_TRACK_LIM = 3 # MCCA track limit exceeded
-# NOTE: 4-255 are reserved
-
 # constants for status codes Std Table 8-37 (see also ieee80211.h)
 STATUS_SUCCESS                                =   0
 STATUS_UNSPECIFIED_FAILURE                    =   1
@@ -386,7 +157,7 @@ STATUS_INVALID_GROUP_CIPHER                   =  41
 STATUS_INVALID_PAIRWISE_CIPHER                =  42
 STATUS_INVALID_AKMP                           =  43
 STATUS_UNSUPP_RSNE_VERSION                    =  44
-STATUS_INVALID_RSNe_CAP                       =  45
+STATUS_INVALID_RSNE_CAP                       =  45
 STATUS_CIPHER_SUITE_REJECTED                  =  46
 STATUS_REJECTED_FOR_DELAY_PERIOD              =  47
 STATUS_DLS_NOT_ALLOWED                        =  48
@@ -513,4 +284,491 @@ CATEGORY_VENDOR_SPECIFIC_PROTECTED = 126
 CATEGORY_VENDOR_SPECIFIC           = 127
 # 128 to 255 are error codes
 
+#### MGMT FRAMES
+
+# CONSTANTS for action frames Std 8.5.1
+SPEC_MGMT_MSMT_REQ  = 0
+SPEC_MGMT_MSMT_REP  = 1
+SPEC_MGMT_TPC_REQ   = 2
+SPEC_MGMT_TPC_REP   = 3
+SPEC_MGMT_CH_SWITCH = 4
+
+# CONSTANTS for element ids Std 8.4.2.1
+# reserved 17 to 31, 47, 49, 128, 129, 133-136, 143-173, 175-220, 222-255
+# undefined 77,103
+EID_SSID                    =   0 # Std 8.4.2.2
+EID_SUPPORTED_RATES         =   1
+EID_FH                      =   2
+EID_DSSS                    =   3
+EID_CF                      =   4
+EID_TIM                     =   5
+EID_IBSS                    =   6
+EID_COUNTRY                 =   7
+EID_HOP_PARAMS              =   8
+EID_HOP_TABLE               =   9
+EID_REQUEST                 =  10
+EID_BSS_LOAD                =  11
+EID_EDCA                    =  12
+EID_TSPEC                   =  13
+EID_TCLAS                   =  14
+EID_SCHED                   =  15
+EID_CHALLENGE               =  16
+EID_PWR_CONSTRAINT          =  32
+EID_PWR_CAPABILITY          =  33
+EID_TPC_REQ                 =  34
+EID_TPC_RPT                 =  35
+EID_CHANNELS                =  36
+EID_CH_SWITCH               =  37
+EID_MSMT_REQ                =  38
+EID_MSMT_RPT                =  39
+EID_QUIET                   =  40
+EID_IBSS_DFS                =  41
+EID_ERP                     =  42
+EID_TS_DELAY                =  43
+EID_TCLAS_PRO               =  44
+EID_HT_CAP                  =  45 # Std 8.4.2.58
+EID_QOS_CAP                 =  46
+EID_RSNE                    =  48
+EID_EXTENDED_RATES          =  50
+EID_AP_CH_RPT               =  51
+EID_NEIGHBOR_RPT            =  52
+EID_RCPI                    =  53
+EID_MDE                     =  54
+EID_FTE                     =  55
+EID_TIE                     =  56
+EID_RDE                     =  57
+EID_DSE_REG_LOC             =  58
+EID_OP_CLASSES              =  59 # Std 8.4.2.56
+EID_EXT_CH_SWITCH           =  60
+EID_HT_OP                   =  61 # Std 8.4.2.59
+EID_SEC_CH_OFFSET           =  62 # Std 8.4.2.22
+EID_BSS_AVG_DELAY           =  63
+EID_ANTENNA                 =  64
+EID_RSNI                    =  65
+EID_MSMT_PILOT              =  66 # Std 8.4.2.44
+EID_BSS_AVAIL               =  67
+EID_BSS_AC_DELAY            =  68
+EID_TIME_ADV                =  69
+EID_RM_ENABLED              =  70 # Std 8.4.2.47
+EID_MUL_BSSID               =  71 # Std 8.4.2.48
+EID_20_40_COEXIST           =  72
+EID_20_40_INTOLERANT        =  73
+EID_OVERLAPPING_BSS         =  74
+EID_RIC_DESC                =  75
+EID_MGMT_MIC                =  76
+EID_EVENT_REQ               =  78
+EID_EVENT_RPT               =  79
+EID_DIAG_REQ                =  80
+EID_DIAG_RPT                =  81
+EID_LOCATION                =  82
+EID_NONTRANS_BSS            =  83
+EID_SSID_LIST               =  84
+EID_MULT_BSSID_INDEX        =  85
+EID_FMS_DESC                =  86
+EID_FMS_REQ                 =  87
+EID_FMS_RESP                =  88
+EID_QOS_TRAFFIC_CAP         =  89
+EID_BSS_MAX_IDLE            =  90
+EID_TFS_REQ                 =  91
+EID_TFS_RESP                =  92
+EID_WNM_SLEEP               =  93
+EID_TIM_REQ                 =  94
+EID_TIM_RESP                =  95
+EID_COLLOCATED_INTERFERENCE =  96
+EID_CH_USAGE                =  97
+EID_TIME_ZONE               =  98
+EID_DMS_REQ                 =  99
+EID_DMS_RESP                = 100
+EID_LINK_ID                 = 101
+EID_WAKEUP_SCHED            = 102
+EID_CH_SWITCH_TIMING        = 104
+EID_PTI_CTRL                = 105
+EID_TPU_BUFF_STATUS         = 106
+EID_INTERWORKING            = 107
+EID_ADV_PROTOCOL            = 108
+EID_EXPEDITED_BW_REQ        = 109
+EID_QOS_MAP_SET             = 110
+EID_ROAMING_CONS            = 111
+EID_EMERGENCY_ALERT_ID      = 112
+EID_MESH_CONFIG             = 113
+EID_MESH_ID                 = 114
+EID_MESH_LINK_METRIC_RPT    = 115
+EID_CONGESTION              = 116
+EID_MESH_PEERING_MGMT       = 117
+EID_MESH_CH_SWITCH_PARAM    = 118
+EID_MESH_AWAKE_WIN          = 119
+EID_BEACON_TIMING           = 120
+EID_MCCAOP_SETUP_REQ        = 121
+EID_MCCAOP_SETUP_REP        = 122
+EID_MCCAOP_ADV              = 123
+EID_MCCAOP_TEARDOWN         = 124
+EID_GANN                    = 125
+EID_RANN                    = 126
+EID_EXT_CAP                 = 127
+EID_PREQ                    = 130
+EID_PREP                    = 131
+EID_PERR                    = 132
+EID_PXU                     = 137
+EID_PXUC                    = 138
+EID_AUTH_MESH_PEER_EXC      = 139
+EID_MIC                     = 140
+EID_DEST_URI                = 141
+EID_UAPSD_COEXIST           = 142
+EID_MCCAOP_ADV_OVERVIEW     = 174
+EID_VEND_SPEC               = 221 # Std 8.4.2.28
+
+# CONSTANTS for subelement ids for Neighbor Report Std Table 8-115
+EID_NR_TSF              =   1
+EID_NR_COUNTRY_STRING   =   2
+EID_NR_BSS_TX_CAND_PREF =   3
+EID_NR_BSS_TERM_DUR     =   4
+EID_NR_BEARING          =   5
+EID_NR_HT_CAP           =  45
+EID_NR_HT_OP            =  61
+EID_NR_SEC_CH_OFFSET    =  62
+EID_NR_MSMT_PILOT_TX    =  66
+EID_NR_RM_ENABLED_CAP   =  70
+EID_NR_MULT_BSSID       =  71
+EID_NR_VEND_SPEC        = 221
+# Note: reserved 0, 6-44, 46-60, 67-69,72-220,222-255
+
+# CONSTANTS for subelement ids for FTE Std Table 9-121
+EID_FTE_RSRV   = 0
+EID_FTE_PMK_R1 = 1
+EID_FTE_GTK    = 2
+EID_FTE_PMK_R0 = 3
+EID_FTE_IGTK   = 4
+# NOTE: 5 - 255 are reserved
+
+# FMS Element Sttus and TFS Response Status definitions Std Table 8-160
+EID_FMS_STATUS_ACCEPT          =  1
+EID_FMS_STATUS_DENY_ERR        =  2
+EID_FMS_STATUS_DENY_MATCH      =  3
+EID_FMS_STATUS_DENY_POLICY     =  4
+EID_FMS_STATUS_DENY_UNSPEC     =  5
+EID_FMS_STATUS_ALT_STREAM      =  6
+EID_FMS_STATUS_ALT_POLICY      =  7
+EID_FMS_STATUS_ALT_DELV_CHANGE =  8
+EID_FMS_STATUS_ALT_AP_MAST     =  9
+EID_FMS_STATUS_TERM_POLICY     = 10
+EID_FMS_STATUS_TERM_RESOURCES  = 11
+EID_FMS_STATUS_TERM_PRIORITY   = 12
+EID_FMS_STATUS_ALT_MAX         = 13
+EID_FMS_STATUS_ALT_TCLAS       = 14
+# Note: 15 - 255 are reserved
+
+# TFS Request subelement definitions Std Table 8-163
+# 0 is reserved
+EID_TFS_SUBELEMENT_TFS  =   1
+# 2-220 are reserved
+EID_TFS_SUBELEMENT_VEND = 221
+# 222 - 255 are resrved
+
+# WNM Sleep Mode constants See Std 10.2.1.18
+# Action type definitions Std Table 8-165
+EID_WNM_SLEEP_ACTION_ENTER = 0
+EID_WNM_SLEEP_ACTION_EXIT  = 1
+# NOTE 2-255 are reserved
+
+# Response Status definitions Std Table 8-166
+EID_WNM_SLEEP_STATUS_ACCEPT   = 0
+EID_WNM_SLEEP_STATUS_UPDATE   = 1
+EID_WNM_SLEEP_STATUS_DENIED   = 2 # AP cannot perform request
+EID_WNM_SLEEP_STATUS_TEMP     = 3 # temporary, try again later
+EID_WNM_SLEEP_STATUS_EXPIRE   = 4 # key is pending expiration
+EID_WNM_SLEEP_STATUS_SERVICES = 5 # STA has other WNM services in use
+# NOTE -255 are reserved
+
+# Expedited Bandwith Request Precedence level definitions Std Table 8-176
+EID_EXPEDITED_BW_REQ_CALL  = 16
+EID_EXPEDITED_BW_REQ_PUB   = 17
+EID_EXPEDITED_BW_REQ_PRIV  = 18
+EID_EXPEDITED_BW_REQ_LVL_A = 19
+EID_EXPEDITED_BW_REQ_LVL_B = 20
+EID_EXPEDITED_BW_REQ_LVL_0 = 21
+EID_EXPEDITED_BW_REQ_LVL_1 = 22
+EID_EXPEDITED_BW_REQ_LVL_2 = 23
+EID_EXPEDITED_BW_REQ_LVL_3 = 24
+EID_EXPEDITED_BW_REQ_LVL_4 = 25
+# NOTE 0-15 and 26-255 are reserved
+
+# Mesh configuration element definitions Std 8.4.2.100
+# Std Table 8-177
+EID_MESH_CONFIG_PATH_PROTO_HYBRID =   1
+EID_MESH_CONFIG_PATH_PROTO_VENDOR = 255
+# NOTE: 0, 2-254 are reserved
+
+# Std Table 8-178
+EID_MESH_CONFIG_PATH_METRIC_AIRTIME =   1
+EID_MESH_CONFIG_PATH_METRIC_VENDOR  = 255
+# NOTE: 0, 2-254 are reserved
+
+# Std Table 8-179
+EID_MESH_CONFIG_CONTROL_MODE_DEFAULT =   0
+EID_MESH_CONFIG_CONTROL_MODE_SIGNAL  =   1
+EID_MESH_CONFIG_CONTROL_MODE_VENDOR  = 255
+# NOTE 2-254 are reserved
+
+# Std Table 8-180
+EID_MESH_CONFIG_SYNC_MODE_NEIGHBOR =   1
+EID_MESH_CONFIG_SYNC_MODE_VENDOR   = 255
+# NOTE: 0, 2-254 are reserved
+
+# Std Table 8-181
+EID_MESH_CONFIG_AUTH_PROTO_NONE   =   0
+EID_MESH_CONFIG_AUTH_PROTO_SAE    =   1
+EID_MESH_CONFIG_AUTH_PROTO_8021X  =   2
+EID_MESH_CONFIG_AUTH_PROTO_VENDOR = 255
+# NOTE: 3-254 are reserved
+
+# Std Table 8-114
+EID_NEIGHBOR_RPT_AP_REACH_RSRV = 0
+EID_NEIGHBOR_RPT_AP_REACH_NO   = 1
+EID_NEIGHBOR_RPT_AP_REACH_UNK  = 2
+EID_NEIGHBOR_RPT_AP_REACH_YES  = 3
+
+# Std Table 8-174 (Access Network Types)
+EID_INTERWORKING_ANT_PRIV_NET        =  0
+EID_INTERWORKING_ANT_PRIV_NET_GUEST  =  1
+EID_INTERWORKING_ANT_PUB_NET_CHARGE  =  2
+EID_INTERWORKING_ANT_PUB_NET_FREE    =  3
+EID_INTERWORKING_ANT_PAN             =  4
+EID_INTERWORKING_ANT_EMERG_SERVICE   =  5
+EID_INTERWORKING_ANT_TEST            = 14
+EID_INTERWORKING_ANT_WILDCARD        = 15
+# NOTE: 6 to 13 are reserved
+
+# Std Table 8-183 (MCCA Reply Code values)
+EID_MCCA_REPLY_CODE_ACCEPT           = 0
+EID_MCCA_REPLY_CODE_REJECT_CONFLICT  = 1 # MCCAOP resrvation conflict
+EID_MCCA_REPLY_CODE_REJECT_MAF_LIM   = 2 # MAF limit exceeded
+EID_MCCA_REPLY_CODE_REJECT_TRACK_LIM = 3 # MCCA track limit exceeded
+# NOTE: 4-255 are reserved
+
+# MSMT REQUEST->Measurement Type Std Table 8-59
+MSMT_REQ_TYPE_BASIC     =   0 # basic (spec mgmt)
+MSMT_REQ_TYPE_CCA       =   1 # clear channel assessment (spec mgmt)
+MSMT_REQ_TYPE_RPI       =   2 # receive power indication histogram (spec mgmt)
+MSMT_REQ_TYPE_CH_LOAD   =   3 # channel load (rdo msmt)
+MSMT_REQ_TYPE_NOISE     =   4 # noise histogram (rdo msmt)
+MSMT_REQ_TYPE_BEACON    =   5 # beacon (rdo msmt)
+MSMT_REQ_TYPE_FRAME     =   6 # frame (rdo msmt)
+MSMT_REQ_TYPE_STA       =   7 # STA statistics (rdo msmt & WNM)
+MSMT_REQ_TYPE_LCI       =   8 # LCI (rdo msmt & WNM)
+MSMT_REQ_TYPE_TX        =   9 # tx stream/category msmt (rdo msmt)
+MSMT_REQ_TYPE_MULTI     =  10 # multicasat diagnostics (WNM)
+MSMT_REQ_TYPE_LOC_CIVIC =  11 # location civic (rdo msmt & WNM)
+MSMT_REQ_TYPE_LOC_ID    =  12 # location identifier (rdo msmt & WNM)
+# NOTE 13-254 are reserved
+MSMT_REQ_TYPE_PAUSE     = 255 # msmt pause (rdo msmt)
+
+# MSMT REPORT->Measurement Report Type Std Table 8-81
+MSMT_RPT_TYPE_BASIC     =   0 # basic (spec mgmt)
+MSMT_RPT_TYPE_CCA       =   1 # clear channel assessment (spec mgmt)
+MSMT_RPT_TYPE_RPI       =   2 # receive power indication histogram (spec mgmt)
+MSMT_RPT_TYPE_CH_LOAD   =   3 # channel load (rdo msmt)
+MSMT_RPT_TYPE_NOISE     =   4 # noise histogram (rdo msmt)
+MSMT_RPT_TYPE_BEACON    =   5 # beacon (rdo msmt)
+MSMT_RPT_TYPE_FRAME     =   6 # frame (rdo msmt)
+MSMT_RPT_TYPE_STA       =   7 # STA statistics (rdo msmt & WNM)
+MSMT_RPT_TYPE_LCI       =   8 # LCI (rdo msmt & WNM)
+MSMT_RPT_TYPE_TX        =   9 # tx stream/category msmt (rdo msmt)
+MSMT_RPT_TYPE_MULTI     =  10 # multicasat diagnostics (WNM)
+MSMT_RPT_TYPE_LOC_CIVIC =  11 # location civic (rdo msmt & WNM)
+MSMT_RPT_TYPE_LOC_ID    =  12 # location identifier (rdo msmt & WNM)
+# NOTE 13-255 are reserved
+
 # Cipher suite selectors Std Table 8-99
+
+# Cipher suite usage Std Table 8-100
+
+# AKM suite selectors Std Table 8-101
+
+# TSPEC->TS-INFO->Direction encoding Std Table 8-107
+TSPEC_TSINFO_DIRECTION_UP     = 0
+TSPEC_TSINFO_DIRECTION_DIRECT = 1
+TSPEC_TSINFO_DIRECTION_DOWN   = 2
+TSPEC_TSINFO_DIRECTION_BI     = 3
+
+# TSPEC->TS-INFO->Access Policy encoding Std Table 8-108
+TSPEC_TSINFO_ACCPOL_RSRV    = 0
+TSPEC_TSINFO_ACCPOL_CONTROL = 1
+TSPEC_TSINFO_ACCPOL_CONTENT = 2
+TSPEC_TSINFO_ACCPOL_MIX     = 3
+
+# TSPEC->TS-INFO->Ack Policy encoding Std Table 8-109
+TSPEC_TSINFO_ACKPOL_NORMAL = 0
+TSPEC_TSINFO_ACKPOL_RSRV   = 1
+TSPEC_TSINFO_ACKPOL_NONE   = 2
+TSPEC_TSINFO_ACKPOL_BLOCK  = 3
+
+# TSPEC->TS-INFO->Schedule encoding Std Table 8-110
+TSPEC_TSINFO_SCHED_NONE    = 0
+TSPEC_TSINFO_SCHED_PSMP    = 1
+TSPEC_TSINFO_SCHED_PSMP_UN = 2
+TSPEC_TSINFO_SCHED_APSD    = 3
+
+# TCLASS->FRAME CLASSIFIER->Frame Classifier Type Std Table 8-111
+TCLAS_FRAMECLASS_TYPE_ETHERNET      = 0
+TCLAS_FRAMECLASS_TYPE_TCPUDP        = 1
+TCLAS_FRAMECLASS_TYPE_8021Q         = 2
+TCLAS_FRAMECLASS_TYPE_FILTER_OFFSET = 3
+TCLAS_FRAMECLASS_TYPE_IP            = 4
+TCLAS_FRAMECLASS_TYPE_8021D         = 5
+# Note 6-255 are reserved
+
+# EVENT REPORT->Event Report Status Std Table 8-137
+EVENT_REPORT_STATUS_SUCCESS   = 0
+EVENT_REPORT_STATUS_FAILED    = 1
+EVENT_REPORT_STATUS_REFUSED   = 2
+EVENT_REPORT_STATUS_INCAPABLE = 3
+EVENT_REPORT_STATUS_FREQ      = 4
+# Note 5-255 are reserved
+
+# DIAGNOSTIC REPORT/REQUEST Type definitions Std Table 8-140
+DIAGNOSTIC_REPORT_CDR        = 0 # cancel diagnostic request
+DIAGNOSTIC_REPORT_MANUF_INFO = 1 # manufacturer info STA report
+DIAGNOSTIC_REPORT_CONFIG     = 2 # configuration profile
+DIAGNOSTIC_REPORT_ASSOC      = 3 # association diagnostic
+DIAGNOSTIC_REPORT_IEEE_8021X = 4 # 802.1X Authentication diagnostic
+# 5-220 are reserved
+DIAGNOSTIC_REPORT_VEND       = 5 # vendor specific
+# Note: 222-255 are reserved
+
+# DIAGNOSTIC REPORT/REQUEST subelements ID definitions Std Table 8-143
+EID_DIAG_SUBELEMENT_CRED        =   0 # credential type
+EID_DIAG_SUBELEMENT_AKM         =   1 # akm suite
+EID_DIAG_SUBELEMENT_AP          =   2 # AP descriptor
+EID_DIAG_SUBELEMENT_ANT         =   3 # antenna type
+EID_DIAG_SUBELEMENT_CS          =   4 # cipher suite
+EID_DIAG_SUBELEMENT_RDO         =   5 # collocated radio type
+EID_DIAG_SUBELEMENT_DEV         =   6 # device type
+EID_DIAG_SUBELEMENT_EAP         =   7 # EAP method
+EID_DIAG_SUBELEMENT_FW          =   8 # firmware version
+EID_DIAG_SUBELEMENT_MAC         =   9 # firmware version
+EID_DIAG_SUBELEMENT_MANUF_ID    =  10 # manufacturer ID
+EID_DIAG_SUBELEMENT_MANUF_MODEL =  11 # manufacturer model
+EID_DIAG_SUBELEMENT_MANUF_OI    =  12 # manufacturer OI
+EID_DIAG_SUBELEMENT_MANUF_SER   =  13 # manufacturer serial number
+EID_DIAG_SUBELEMENT_POW_SAVE    =  14 # power save mode
+EID_DIAG_SUBELEMENT_PROFILE     =  15 # profile ID
+EID_DIAG_SUBELEMENT_OP_CLASSES  =  16 # supported op classes
+EID_DIAG_SUBELEMENT_STATUS      =  17 # status code
+EID_DIAG_SUBELEMENT_SSID        =  18 # SSID
+EID_DIAG_SUBELEMENT_TX_POWER    =  19 # to-power capability
+EID_DIAG_SUBELEMENT_CERT        =  20 # certificate ID
+# 21-220 are reserved
+EID_DIAG_SUBELEMENT_VEND        = 221 # vendor specific
+# Note: 221 - 255 are resrved
+
+# DIAGNOSTIC REPORT/REQUEST->Collocated Radio type definitions Std Table 8-145
+EID_DIAG_RDO_RSRV       =  0
+EID_DIAG_RDO_CELLULAR   =  1
+EID_DIAG_RDO_CORDLESS   =  2
+EID_DIAG_RDO_GPS        =  3
+EID_DIAG_RDO_IEEE_80211 =  4
+EID_DIAG_RDO_IEEE_80215 =  5
+EID_DIAG_RDO_IEEE_80216 =  6
+EID_DIAG_RDO_IEEE_80220 =  7
+EID_DIAG_RDO_IEEE_80222 =  8
+EID_DIAG_RDO_DAB        =  9
+EID_DIAG_RDO_DVB        = 10
+# Note 11 - 255 are reserved
+
+# DIAGNOSTIC REPORT/REQUEST->Device type definitions Std Table 8-146
+EID_DIAG_DEV_RSRV              =   0
+EID_DIAG_DEV_REF               =   1
+EID_DIAG_DEV_SOHO_AP           =   2
+EID_DIAG_DEV_ENT_AP            =   3
+EID_DIAG_DEV_CABLE             =   4
+EID_DIAG_DEV_STILL_CAMERA      =   5
+EID_DIAG_DEV_VID_CAMERA        =   6
+EID_DIAG_DEV_WEB_CAMERA        =   7
+EID_DIAG_DEV_AUDIO_STAT        =   8
+EID_DIAG_DEV_AUDIO_PORT        =   9
+EID_DIAG_DEV_SET_TOP           =  10
+EID_DIAG_DEV_DISP_DEV          =  11
+EID_DIAG_DEV_GAME              =  12
+EID_DIAG_DEV_GAME_PORT         =  13
+EID_DIAG_DEV_MEDIA_SERVER      =  14
+EID_DIAG_DEV_NET_STORAGE       =  15
+EID_DIAG_DEV_EXT_CARD          =  16
+EID_DIAG_DEV_INT_CARD          =  17
+EID_DIAG_DEV_ULTRA_PC          =  18
+EID_DIAG_DEV_NOTEBOOK          =  19
+EID_DIAG_DEV_PDA               =  20
+EID_DIAG_DEV_PRINTER           =  21
+EID_DIAG_DEV_PHONE_DUAL        =  22
+EID_DIAG_DEV_PHONE_SINGLE      =  23
+EID_DIAG_DEV_SMARTPHONE_DUAL   =  24
+EID_DIAG_DEV_SMARTPHONE_SINFLE =  25
+# 26-220 are reserved
+EID_DIAG_DEV_OTHER             = 221
+# 222 - 225 are reserved
+
+# DIAGNOSTIC REPORT->Manufacturer Info STA report contents from Std
+# Tables 8-149, 8-150, 8-151, 8-152
+# defines the order of elements present based on the type of report
+EID_DIAG_RPT_ORDER = {
+    DIAGNOSTIC_REPORT_MANUF_INFO:[EID_DIAG_SUBELEMENT_MANUF_OI,
+                                  EID_DIAG_SUBELEMENT_MANUF_ID,
+                                  EID_DIAG_SUBELEMENT_MANUF_MODEL,
+                                  EID_DIAG_SUBELEMENT_MANUF_SER,
+                                  EID_DIAG_SUBELEMENT_FW,
+                                  EID_DIAG_SUBELEMENT_ANT,
+                                  EID_DIAG_SUBELEMENT_RDO,
+                                  EID_DIAG_SUBELEMENT_DEV,
+                                  EID_DIAG_SUBELEMENT_CERT],
+    DIAGNOSTIC_REPORT_CONFIG:[EID_DIAG_SUBELEMENT_PROFILE,
+                              EID_DIAG_SUBELEMENT_OP_CLASSES,
+                              EID_DIAG_SUBELEMENT_TX_POWER,
+                              EID_DIAG_SUBELEMENT_CS,
+                              EID_DIAG_SUBELEMENT_AKM,
+                              EID_DIAG_SUBELEMENT_EAP,
+                              EID_DIAG_SUBELEMENT_CRED,
+                              EID_DIAG_SUBELEMENT_SSID,
+                              EID_DIAG_SUBELEMENT_POW_SAVE],
+    DIAGNOSTIC_REPORT_ASSOC:[EID_DIAG_SUBELEMENT_AP,EID_DIAG_SUBELEMENT_STATUS],
+    DIAGNOSTIC_REPORT_IEEE_8021X:[EID_DIAG_SUBELEMENT_AP,
+                                  EID_DIAG_SUBELEMENT_EAP,
+                                  EID_DIAG_SUBELEMENT_CRED,
+                                  EID_DIAG_SUBELEMENT_STATUS]
+}
+
+# LOCATION PARAMETERS->Location Subelements ID Std Table 8-153
+EID_LOCATION_SUBELEMENT_LIP       =   1 # location indication parameters
+EID_LOCATION_SUBELEMENT_LIC       =   2 # location indication channels
+EID_LOCATION_SUBELEMENT_STATUS    =   3 # location status
+EID_LOCATION_SUBELEMENT_RDO_INFO  =   4 # radio information
+EID_LOCATION_SUBELEMENT_MOTION    =   5 # motion
+EID_LOCATION_SUBELEMENT_LIBDR     =   6 # locaiton indication bcast data rate
+EID_LOCATION_SUBELEMENT_DEPT_TIME =   7 # time of departure
+EID_LOCATION_SUBELEMENT_LIO       =   8 # location indication options
+# Note 9-220 are reserved
+EID_LOCATION_SUBELEMENT_VENDOR    = 221 # vendor specific
+# Note 222 - 225 are reserved
+
+# FMS REQUEST->Request sublements id definitions Std Table 8-158
+EID_FMS_REQ_SUBELEMENT_RSRV =   0
+EID_FMS_REQ_SUBELEMENT_FMS  =   1
+# 2 - 220 are reserved
+EID_FMS_REQ_SUBELEMENT_VEND = 221
+# 222 - 255 are reserved
+
+# FMS RESPONSE->Status sublements id definitions Std Table 8-159
+EID_FMS_RESP_SUBELEMENT_RSRV  =   0
+EID_FMS_RESP_SUBELEMENT_FMS   =   1
+EID_FMS_RESP_SUBELEMENT_TCLAS =   2
+# 3 - 220 are reserved
+EID_FMS_RESP_SUBELEMENT_VEND  = 221
+# 222 - 255 are reserved
+
+
+# ADVERTISEMENT PROTOCOL->Advertisement protocol ID definitions Std Table 8-175
+ADV_PROTOCOL_ID_ANQP    =   0
+ADV_PROTOCOL_ID_MIH     =   1
+ADV_PROTOCOL_ID_MIH_CMD =   2
+ADV_PROTOCOL_ID_EAS     =   3
+# Note 4-220 are reserved
+ADV_PROTOCOL_ID_VEND    = 221
+# Note 222-225 are reserved

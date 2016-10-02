@@ -26,34 +26,31 @@
    o TPC Report, link-margin. Is it processed correctly
    o need a frame with Supported Channels element to look at IOT parse it
    o rehit after taking care of 'easier' elements
-     - Measurement Request Element
-     - Measurement Report Element
-     - IBSS DFS element
-     - RSN element
+     - Measurement Request Element: parse measurement request field
+     - Measurement Report Element: parse measurement report field
      - Extended Capabilities element: see comments in _mpdu
-     - request element: there is no definition of the size of each request element id
-     - TPSEC element
-     - TCLAS element
+     - TCLAS element: parse frame classifier params
+     - Challange Text: is there more we can do with this?
      - BSS Available Admission Capacity
-     - FTE
-     - RIC Descripton element: variable parameters unparsed
-     - DSE Registered location
+     - RIC Descripton element: variable parameters need to be parsed as block ack
+       8.4.1.14, 8.4.1.15 and 8.3.1.8
      - HT capabilities element: have to parse the mcs set subfield
      - HT Operation element: have to parse the mcs set subfield
      - Time Advertisement: further parse time value, time error & time update counter
-     - Event Request & Reprt
-     - Diagnostic Request & Report
-     - Location Parameters
-     - FMS Request & Response
-     - TFS Request
-     - DMS Request & Response
-     - Advertisement Protocol
-     - Roaming Consortium
+     - Event Request: parse variable event request
+     - Event Report: parse variable event request, parse TSF, UTC and Time Error
+       (see Time Advertisement element for this)
+     - FMS Request & Response: have to parse optional TCLAS elements, TCLAS
+       Processing element
+     - TFS Request: have to parse optional TCLAS elements, TCLAS Processing element
+     - DMS Request: parse remaining DMS descriptor subfields
+     - DMS Response: parse remaining DMS status subfields
      - Mesh Link metric: have to parse the link metric See 8.4.2.100.3 and Table 13-5
      - Auth. Mesh Peering Exchange: only the cipher suite is parsed
      - QoS Capability element: determine if sent by AP or non-AP
      - supported Operating Classes: further parsing of operating classes element
      - BSSID index element: have to seperate dtim period and dtim count
+     - Multiple BSSID: parse optional sublement
    o for vendor specific info-elements is there info out there on the most common
     or some other methods for determining how for example wireshark parses these
     looks like there is some further consistency from wireshark reviews
@@ -65,16 +62,16 @@
    o for Supported operating classes see 10.10.1 and 10.11.9.1 for info on
     operating classes element
    o for Nontransmitted BSSID capability set 8.4.2.48, 10.11.14 & 10.1.3.6
-   o twos complement signed integer value
-     - interference level field in Collocated Interference Report element
-     - TPC Report element
-     - Time Advertisement element
-     - find any we may have missed
-   o optional subelement parsing see Table 8-240 and 8-115, 8-116 and Figures
-     8-218 thru 8-221
-    - Multiple BSSID
-    - Msmt Pilot Transmission
-    - Neighbor report element
+   o non-unsigned values:
+     - twos complement signed integer value
+       * interference level field in Collocated Interference Report element
+       * TPC Report element
+       * Time Advertisement element
+       * DSE - altitude
+       * find any we may have missed
+       * vertical speed subelement field in location status subelement 8.4.2.73.6
+     - neighbor rpt optional sublements, bearing subelement verify distance &
+      relative height as float and signed short
    o Info element: Country element is currently treated as 3 unsigned octets but
     see Std, the Max Tx Pwr Lvl/Cov class may actually be unsigned in some cases.
     No definition of when this is
@@ -83,4 +80,11 @@
     - 20/40 Intolerant Channel Report
    o find all info elements that reference subelements Fig 8-40
    o Std Table 8-160
-  29) add Table 8-99 Cipher suite selectors to ieee80211
+  29) add Tables 8-99, 8-100, 8-101 to ieee80211
+  30) change _parseinfosubel_ to accept a function that is applied to each
+   subfield. This allows the subelements to be pulled off and parsed w/out
+   requiring two iterations
+  31) for information elements, should we set as a dict for even those with one field
+  such as ssid? i.e. (ssid_id,{'ssid':ssid_name}) or leave as is i.e.
+  (ssid_id,ssid_name)
+  32) Have to go through and standarize naming conventions of constants & fcts
