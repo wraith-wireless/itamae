@@ -26,8 +26,8 @@ Defines constants as found in the Standard IEEE 802.11-2012
 
 __name__ = 'ieee80211'
 __license__ = 'GPL v3.0'
-__version__ = '0.0.2'
-__date__ = 'September 2016'
+__version__ = '0.0.3'
+__date__ = 'October 2016'
 __author__ = 'Dale Patterson'
 __maintainer__ = 'Dale Patterson'
 __email__ = 'wraith.wireless@yandex.com'
@@ -350,7 +350,7 @@ EID_BSS_AVAIL               =  67
 EID_BSS_AC_DELAY            =  68
 EID_TIME_ADV                =  69
 EID_RM_ENABLED              =  70 # Std 8.4.2.47
-EID_MUL_BSSID               =  71 # Std 8.4.2.48
+EID_MULT_BSSID              =  71 # Std 8.4.2.48
 EID_20_40_COEXIST           =  72
 EID_20_40_INTOLERANT        =  73
 EID_OVERLAPPING_BSS         =  74
@@ -546,37 +546,244 @@ EID_MCCA_REPLY_CODE_REJECT_TRACK_LIM = 3 # MCCA track limit exceeded
 # NOTE: 4-255 are reserved
 
 # MSMT REQUEST->Measurement Type Std Table 8-59
-MSMT_REQ_TYPE_BASIC     =   0 # basic (spec mgmt)
-MSMT_REQ_TYPE_CCA       =   1 # clear channel assessment (spec mgmt)
-MSMT_REQ_TYPE_RPI       =   2 # receive power indication histogram (spec mgmt)
-MSMT_REQ_TYPE_CH_LOAD   =   3 # channel load (rdo msmt)
-MSMT_REQ_TYPE_NOISE     =   4 # noise histogram (rdo msmt)
-MSMT_REQ_TYPE_BEACON    =   5 # beacon (rdo msmt)
-MSMT_REQ_TYPE_FRAME     =   6 # frame (rdo msmt)
-MSMT_REQ_TYPE_STA       =   7 # STA statistics (rdo msmt & WNM)
-MSMT_REQ_TYPE_LCI       =   8 # LCI (rdo msmt & WNM)
-MSMT_REQ_TYPE_TX        =   9 # tx stream/category msmt (rdo msmt)
-MSMT_REQ_TYPE_MULTI     =  10 # multicasat diagnostics (WNM)
-MSMT_REQ_TYPE_LOC_CIVIC =  11 # location civic (rdo msmt & WNM)
-MSMT_REQ_TYPE_LOC_ID    =  12 # location identifier (rdo msmt & WNM)
+EID_MSMT_REQ_TYPE_BASIC     =   0 # basic (spec mgmt)
+EID_MSMT_REQ_TYPE_CCA       =   1 # clear channel assessment (spec mgmt)
+EID_MSMT_REQ_TYPE_RPI       =   2 # receive power indication histogram (spec mgmt)
+EID_MSMT_REQ_TYPE_CH_LOAD   =   3 # channel load (rdo msmt)
+EID_MSMT_REQ_TYPE_NOISE     =   4 # noise histogram (rdo msmt)
+EID_MSMT_REQ_TYPE_BEACON    =   5 # beacon (rdo msmt)
+EID_MSMT_REQ_TYPE_FRAME     =   6 # frame (rdo msmt)
+EID_MSMT_REQ_TYPE_STA       =   7 # STA statistics (rdo msmt & WNM)
+EID_MSMT_REQ_TYPE_LCI       =   8 # LCI (rdo msmt & WNM)
+EID_MSMT_REQ_TYPE_TX        =   9 # tx stream/category msmt (rdo msmt)
+EID_MSMT_REQ_TYPE_MULTI     =  10 # multicasat diagnostics (WNM)
+EID_MSMT_REQ_TYPE_LOC_CIVIC =  11 # location civic (rdo msmt & WNM)
+EID_MSMT_REQ_TYPE_LOC_ID    =  12 # location identifier (rdo msmt & WNM)
 # NOTE 13-254 are reserved
-MSMT_REQ_TYPE_PAUSE     = 255 # msmt pause (rdo msmt)
+EID_MSMT_REQ_TYPE_PAUSE     = 255 # msmt pause (rdo msmt)
+
+# MSMT REQUEST->TYPE CHANNEL LOAD->optional subelement ids Std Table 8-60
+EID_MSMT_REQ_SUBELEMENT_CL_RSRV =   0
+EID_MSMT_REQ_SUBELEMENT_CL_RPT  =   1
+# 2 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_CL_VEND = 221
+# 222 - 255 are reserved
+
+# MSMT REQUEST->TYPE BEACON->optional subelement ids Std Table 8-65
+EID_MSMT_REQ_SUBELEMENT_BEACON_SSID      =   0
+EID_MSMT_REQ_SUBELEMENT_BEACON_BRI       =   1
+EID_MSMT_REQ_SUBELEMENT_BEACON_RPT       =   2
+# 3-9 are reserved
+EID_MSMT_REQ_SUBELEMENT_BEACON_REQ       =  10
+# 11-50 are reserved
+EID_MSMT_REQ_SUBELEMENT_BEACON_AP_CH_RPT =  51
+# 52 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_BEACON_VEND      = 221
+# 222 - 255 are reserved
+
+# MSMT REQUEST Group identify for STA statisics report Std Table 8-69
+EID_MSMT_REQ_SUBELEMENT_STA_STA =  0
+EID_MSMT_REQ_SUBELEMENT_STA_STA_MAC =  1
+EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP0 =  2
+EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP1 =  3
+EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP2 =  4
+EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP3 =  5
+EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP4 =  6
+EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP5 =  7
+EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP6 =  8
+EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP7 =  9
+EID_MSMT_REQ_SUBELEMENT_STA_BSS = 10
+EID_MSMT_REQ_SUBELEMENT_STA_STA_AMSDU = 11
+EID_MSMT_REQ_SUBELEMENT_STA_STA_AMPDU = 12
+EID_MSMT_REQ_SUBELEMENT_STA_STA_BAR_CW_PSMP = 13
+EID_MSMT_REQ_SUBELEMENT_STA_STA_RD_CTS_LSIG_TXOP = 14
+EID_MSMT_REQ_SUBELEMENT_STA_STA_STBC = 15
+EID_MSMT_REQ_SUBELEMENT_STA_RSNA = 16
+# 17 - 255 are reserved
+EID_MSMT_REQ_SUBELEMENT_STA_STA_CNT = [
+    EID_MSMT_REQ_SUBELEMENT_STA_STA,
+    EID_MSMT_REQ_SUBELEMENT_STA_STA_MAC,
+    EID_MSMT_REQ_SUBELEMENT_STA_STA_AMSDU,
+    EID_MSMT_REQ_SUBELEMENT_STA_STA_AMPDU,
+    EID_MSMT_REQ_SUBELEMENT_STA_STA_BAR_CW_PSMP,
+    EID_MSMT_REQ_SUBELEMENT_STA_STA_RD_CTS_LSIG_TXOP,
+    EID_MSMT_REQ_SUBELEMENT_STA_STA_STBC
+]
+EID_MSMT_REQ_SUBELEMENT_STA_QOS_CNT = [
+    EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP0,
+    EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP1,
+    EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP2,
+    EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP3,
+    EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP4,
+    EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP5,
+    EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP6,
+    EID_MSMT_REQ_SUBELEMENT_STA_QOS_UP7
+]
+
+# MSMT REQUEST->TYPE CHANNEL LOAD->optional subelement ids Std Table 8-62
+EID_MSMT_REQ_SUBELEMENT_NH_RSRV =   0
+EID_MSMT_REQ_SUBELEMENT_NH_RPT  =   1
+# 2 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_NH_VEND = 221
+# 222 - 255 are reserved
+
+# MSMT REQUEST->TYPE STA->optional subelement ids Std Table 8-70
+EID_MSMT_REQ_SUBELEMENT_STA_RSRV =   0
+EID_MSMT_REQ_SUBELEMENT_STA_RPT  =   1
+# 2 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_STA_VEND = 221
+# 222 - 255 are reserved
+
+# MSMT REQUEST->TYPE LOCATION CONFIGURATION INFORMATION subelement ids Std Table 8-72
+EID_MSMT_REQ_SUBELEMENT_LCI_RSRV       =   0
+EID_MSMT_REQ_SUBELEMENT_LCI_AZIMUTH    =   1
+EID_MSMT_REQ_SUBELEMENT_LCI_REQUESTING =   2
+EID_MSMT_REQ_SUBELEMENT_LCI_TARGET     =   3
+# 4 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_LCI_VEND       = 221
+# 222 -225 are reserved
+
+# MSMT REQUEST->TYPE TX->optional subelement ids Std Table 8-73
+EID_MSMT_REQ_SUBELEMENT_TX_RSRV =   0
+EID_MSMT_REQ_SUBELEMENT_TX_RPT  =   1
+# 2 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_TX_VEND = 221
+# 222 - 255 are reserved
+
+# MSMT REQUEST->TYPE MULTICAST DIAG->optional subelement ids Std Table 8-76
+EID_MSMT_REQ_SUBELEMENT_MCAST_RSRV    =   0
+EID_MSMT_REQ_SUBELEMENT_MCAST_TRIGGER =   1
+# 2 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_MCAST_VEND    = 221
+# 222 - 255 are reserved
+
+# MSMT REQUEST->Civic Location Types Std Table 8-77
+EID_MSMT_REQ_SUBELEMENT_CIVIC_LOC_TYPE_RFC4776 = 0
+EID_MSMT_REQ_SUBELEMENT_CIVIC_LOC_TYPE_VEND    = 1
+# 2-255 are reserved
+
+# MSMT REQUEST->TYPE LOCATION CIVIC sublement ids Std Table 8-79
+EID_MSMT_REQ_SUBELEMENT_LOC_CIVIC_RSRV   =   0
+EID_MSMT_REQ_SUBELEMENT_LOC_CIVIC_ORIGIN =   1
+EID_MSMT_REQ_SUBELEMENT_LOC_CIVIC_TARGET =   2
+# 3 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_LOC_CIVIC_VEND   = 221
+# 222 -255 are reserved
+
+# MSMT REQUEST->TYPE LOCATION ID sublement ids Std Table 8-80
+EID_MSMT_REQ_SUBELEMENT_LOC_ID_RSRV   =   0
+EID_MSMT_REQ_SUBELEMENT_LOC_ID_ORIGIN =   1
+EID_MSMT_REQ_SUBELEMENT_LOC_ID_TARGET =   2
+# 3 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_LOC_ID_VEND   = 221
+# 222 -255 are reserved
 
 # MSMT REPORT->Measurement Report Type Std Table 8-81
-MSMT_RPT_TYPE_BASIC     =   0 # basic (spec mgmt)
-MSMT_RPT_TYPE_CCA       =   1 # clear channel assessment (spec mgmt)
-MSMT_RPT_TYPE_RPI       =   2 # receive power indication histogram (spec mgmt)
-MSMT_RPT_TYPE_CH_LOAD   =   3 # channel load (rdo msmt)
-MSMT_RPT_TYPE_NOISE     =   4 # noise histogram (rdo msmt)
-MSMT_RPT_TYPE_BEACON    =   5 # beacon (rdo msmt)
-MSMT_RPT_TYPE_FRAME     =   6 # frame (rdo msmt)
-MSMT_RPT_TYPE_STA       =   7 # STA statistics (rdo msmt & WNM)
-MSMT_RPT_TYPE_LCI       =   8 # LCI (rdo msmt & WNM)
-MSMT_RPT_TYPE_TX        =   9 # tx stream/category msmt (rdo msmt)
-MSMT_RPT_TYPE_MULTI     =  10 # multicasat diagnostics (WNM)
-MSMT_RPT_TYPE_LOC_CIVIC =  11 # location civic (rdo msmt & WNM)
-MSMT_RPT_TYPE_LOC_ID    =  12 # location identifier (rdo msmt & WNM)
+EID_MSMT_RPT_TYPE_BASIC     =   0 # basic (spec mgmt)
+EID_MSMT_RPT_TYPE_CCA       =   1 # clear channel assessment (spec mgmt)
+EID_MSMT_RPT_TYPE_RPI       =   2 # receive power indication histogram (spec mgmt)
+EID_MSMT_RPT_TYPE_CH_LOAD   =   3 # channel load (rdo msmt)
+EID_MSMT_RPT_TYPE_NOISE     =   4 # noise histogram (rdo msmt)
+EID_MSMT_RPT_TYPE_BEACON    =   5 # beacon (rdo msmt)
+EID_MSMT_RPT_TYPE_FRAME     =   6 # frame (rdo msmt)
+EID_MSMT_RPT_TYPE_STA       =   7 # STA statistics (rdo msmt & WNM)
+EID_MSMT_RPT_TYPE_LCI       =   8 # LCI (rdo msmt & WNM)
+EID_MSMT_RPT_TYPE_TX        =   9 # tx stream/category msmt (rdo msmt)
+EID_MSMT_RPT_TYPE_MULTI     =  10 # multicasat diagnostics (WNM)
+EID_MSMT_RPT_TYPE_LOC_CIVIC =  11 # location civic (rdo msmt & WNM)
+EID_MSMT_RPT_TYPE_LOC_ID    =  12 # location identifier (rdo msmt & WNM)
 # NOTE 13-255 are reserved
+
+# IPI Definitions Std TABLE 8-84
+IPI_LEVEL_LESS_92       =  0
+IPI_LEVEL_BETWEEN_92_89 =  1
+IPI_LEVEL_BETWEEN_89_86 =  2
+IPI_LEVEL_BETWEEN_86_83 =  3
+IPI_LEVEL_BETWEEN_83_80 =  4
+IPI_LEVEL_BETWEEN_80_75 =  5
+IPI_LEVEL_BETWEEN_75_70 =  6
+IPI_LEVEL_BETWEEN_70_65 =  7
+IPI_LEVEL_BETWEEN_65_60 =  8
+IPI_LEVEL_BETWEEN_60_55 =  9
+IPI_LEVEL_GREATER_55    = 10
+
+# MSMT REPORT->Beacon Report optional subelement ids Std Table 8-86
+EID_MSMT_RPT_BEACON_RSRV       =   0
+EID_MSMT_RPT_BEACON_FRAME_BODY =   1
+# 2-220 are reserved
+EID_MSMT_RPT_BEACON_VEND       = 221
+# 222 - 255 are reserved
+
+# MSMT REPORT->Frame Report optional subelement ids Std Table 8-87
+EID_MSMT_RPT_FRAME_RSRV    =   0
+EID_MSMT_RPT_FRAME_CNT_RPT =   1
+# 2-220 are reserved
+EID_MSMT_RPT_FRAME_VEND    = 221
+# 222 - 255 are reserved
+
+# MSMT REPORT->Group Identify for STA Statistics Report Std Table 8-88
+# The Group id is an index into the list of lengths of the statistics group data
+EID_MST_STA_STATS_GID = [28,24,52,52,52,52,52,52,52,52,8,40,36,36,36,20,28]
+
+# MSMT REPORT->STA Statistics Report optional subelement ids Std Table 8-89
+EID_MSMT_RPT_STA_STAT_RSRV    =   0
+EID_MSMT_RPT_STA_STAT_REASON  =   1
+# 2-220 are reserved
+EID_MSMT_RPT_STA_STAT_VEND    = 221
+# 222 - 255 are reserved
+
+# MSMT REPORT->LCI Report optional subelement ids Std Table 8-90
+EID_MSMT_RPT_LCI_RSRV    =   0
+EID_MSMT_RPT_LCI_AZIMUTH =   1
+EID_MSMT_RPT_LCI_ORIGIN  =   2
+EID_MSMT_RPT_LCI_TARGET  =   3
+# 4 - 220 are reserved
+EID_MSMT_RPT_LCI_VEND    = 221
+# 222 - 255 are reserved
+
+# MSMT REPORT->Location Civic Report subelement ids Std Table 8-95
+EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_RSRV      =   0
+EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_ORIGIN    =   1
+EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_TARGET    =   2
+EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_LOC_REF   =   3
+EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_LOC_SHAPE =   4
+EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_MAP_IMAGE =   5
+# 6 - 220 are reserved
+EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_VEND      = 221
+# 221 - 255 are reserved
+
+# Location Shape IDs Table 8-96
+LOC_SHAPE_RSRV = 0
+LOC_SHAPE_2D_PT = 1
+LOC_SHAPE_3D_PT = 2
+LOC_SHAPE_CIRCLE = 3
+LOC_SHAPE_SPHERE = 4
+LOC_SHAPE_POLYGON = 5
+LOC_SHAPE_PRISM = 6
+LOC_SHAPE_ELLIPSE = 7
+LOC_SHAPE_ELLIPSOID = 8
+LOC_SHAPE_ARCBAND = 9
+# 10 - 255 are reserved
+
+# MSMT REQUEST->TYPE LOCATION CIVIC ID sublement ids Std Table 8-98
+EID_MSMT_REQ_SUBELEMENT_LOC_ID_RSRV   =   0
+EID_MSMT_REQ_SUBELEMENT_LOC_ID_ORIGIN =   1
+EID_MSMT_REQ_SUBELEMENT_LOC_ID_TARGET =   2
+# 3 - 220 are reserved
+EID_MSMT_REQ_SUBELEMENT_LOC_ID_VEND   = 221
+# 222 -255 are reserved
+
+# Sublement IDs for Multiple BSSID info element Std Table 8-120
+EID_MUL_BSSID_NONTRANS = 0
+# 1 - 120 are reserved
+EID_MUL_BSSID_VEND = 221
+# 222 - 255 are reserved
+
+# TIE interval type field values Std Table 8-122
+EID_TIE_TYPE_REASSOC  = 1
+EID_TIE_TYPE_KET_LIFE = 2
+EID_TIE_TYPE_COMEBACK = 3
+# NOTE 0, 4=255 are reserved
 
 # Cipher suite selectors Std Table 8-99
 
@@ -617,6 +824,40 @@ TCLAS_FRAMECLASS_TYPE_IP            = 4
 TCLAS_FRAMECLASS_TYPE_8021D         = 5
 # Note 6-255 are reserved
 
+# constants for TCLAS Processing Std Table 8-113
+TCLAS_PRO_ALL_  = 0
+TCLAS_PRO_ONE_  = 1
+TCLAS_PRO_NONE_ = 2
+# NOTE: 3-255 are reserved
+
+# EVENT REQUEST->Event Type definitions Std Table 8-133
+EVENT_REQUEST_TYPE_TRANSITION =   0
+EVENT_REQUEST_TYPE_RSNA       =   1
+EVENT_REQUEST_TYPE_P2P        =   2
+EVENT_REQUEST_TYPE_WNM_LOG    =   3
+# 4 - 220 are reserved
+EVENT_REQUEST_TYPE_VEND       = 221
+# 222-255 are reserved
+
+# EVENT REQUEST->Event Type=Transistion Subelement IDs Std Table 8-134
+EVENT_REQUEST_TYPE_TRANSITION_TARGET   = 0
+EVENT_REQUEST_TYPE_TRANSITION_SOURCE   = 1
+EVENT_REQUEST_TYPE_TRANSITION_TIME_TH  = 2
+EVENT_REQUEST_TYPE_TRANSITION_RESULT   = 3
+EVENT_REQUEST_TYPE_TRANSITION_FREQUENT = 4
+# 5 - 255 are reserved
+
+# EVENT REQUEST->Event Type=RSNA Subelement IDs Std Table 8-135
+EVENT_REQUEST_TYPE_RSNA_TARGET   = 0
+EVENT_REQUEST_TYPE_AUTH_TYPE   = 1
+EVENT_REQUEST_TYPE_EAP_METHOD  = 2
+EVENT_REQUEST_TYPE_RSNA_RESULT   = 3
+# 4 - 255 are reserved
+
+# EVENT REQUEST->Event Type=P2P link Subelement IDs Std Table 8-136
+EVENT_REQUEST_TYPE_P2P_PEER   = 0
+EVENT_REQUEST_TYPE_P2P_CH_NUM = 1
+
 # EVENT REPORT->Event Report Status Std Table 8-137
 EVENT_REPORT_STATUS_SUCCESS   = 0
 EVENT_REPORT_STATUS_FAILED    = 1
@@ -624,6 +865,30 @@ EVENT_REPORT_STATUS_REFUSED   = 2
 EVENT_REPORT_STATUS_INCAPABLE = 3
 EVENT_REPORT_STATUS_FREQ      = 4
 # Note 5-255 are reserved
+
+# TRANSISTION AND TRANSISTION QUERY reasons
+TRANSISTION_QUERY_UNSPEC           =  0
+TRANSISTION_QUERY_EX_FRAME_LOSS    =  1
+TRANSISTION_QUERY_EX_DELAY         =  2
+TRANSISTION_QUERY_INSUFFICIENT_CAP =  3
+TRANSISTION_QUERY_FIRST_ASSOC      =  4
+TRANSISTION_QUERY_LOAD_BALANCE     =  5
+TRANSISTION_QUERY_BETTER_AP        =  6
+TRANSISTION_QUERY_DEAUTH           =  7
+TRANSISTION_QUERY_FAILED_EAP       =  8
+TRANSISTION_QUERY_FAILED_4WAY      =  9
+TRANSISTION_QUERY_REPLY_CNTR_FAIL  = 10
+TRANSISTION_QUERY_DATA_MIC_FAIL    = 11
+TRANSISTION_QUERY_MAX_RETRANS      = 12
+TRANSISTION_QUERY_BCAST_DISASSOC   = 13
+TRANSISTION_QUERY_BCAST_DEAUTH     = 14
+TRANSISTION_QUERY_PREV_FAILED      = 15
+TRANSISTION_QUERY_LOW_RSSI         = 16
+TRANSISTION_QUERY_NON_DOT_ROAM     = 17
+TRANSISTION_QUERY_BSS_REQUEST      = 18
+TRANSISTION_QUERY_PREF_BSS         = 19
+TRANSISTION_QUERY_LEAVING_ESS      = 20
+# 21 - 255 are resrved
 
 # DIAGNOSTIC REPORT/REQUEST Type definitions Std Table 8-140
 DIAGNOSTIC_REPORT_CDR        = 0 # cancel diagnostic request

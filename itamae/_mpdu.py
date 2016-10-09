@@ -576,16 +576,85 @@ def _parseie_(eid,info):
                     'surplus-bw-allowance':vs[13],
                     'medium-time':vs[14]}
         elif eid == std.EID_TCLAS: # Std 8.4.2.33
-            # User Pri|Frame Classifier
-            #        1|             var
-            rem = info[1:]
-            up = struct.unpack_from('=B',info)
+            # Std Fig 8-199 and Fig 8-200
+            up,ct,cm = struct.unpack_from('=3B',info)
+            ps = info[3:]
+            info = {'user-pri':up,'cls-type':ct,'cls-mask':cm}
 
-            # Frame Classifier is 3=252 octets long
-            # Classifier Type|Classifier Mask|Classifier Params
-            #               1|              1|              var
-            ct,cm = struct.unpack_from('=2B',rem)
-            info = {'up':up,'type':ct,'mask':cm,'params':rem[2:]}
+            # the classifier params is dependent on the classifier type
+            if info['cls-type'] == std.TCLAS_FRAMECLASS_TYPE_ETHERNET:
+                # Std Fig. 8-201
+                vs = struct.unpack_from('=12BH',ps)
+                info['cls-params'] = {'src-addr':_hwaddr_(vs[0:6]),
+                                      'dest-addr':_hwaddr_(vs[6:12]),
+                                      'frm-type':vs[12]}
+            elif info['cls-type'] == std.TCLAS_FRAMECLASS_TYPE_TCPUDP:
+                # Fig 8-202 and Fig 8-203
+                # have to pull out ver to determine if ipv4 or ipv6
+                vers = struct.unpack_from('=B',ps)[0]
+                if vers == 4:
+                    vs = struct.unpack_from('=8B2H3B',ps,1)
+                    info['cls-params'] = {'vers':vers,
+                                          'src-addr':vs[0:4],
+                                          'dest-addr':vs[4:8],
+                                          'src-port':vs[8],
+                                          'dest-port':vs[9],
+                                          'dscp':vs[10],
+                                          'proto':vs[11],
+                                          'rsrv':vs[12]}
+                elif vers == 6:
+                    # note: flow label is a 3-byte octet, append a null byte
+                    src = ps[1:17]
+                    dest = ps[17:33]
+                    sp,dp,fl = struct.unpack_from('=2HI',ps+'\x00',33)
+                    info['cls-params'] = {'vers':vers,
+                                          'src-addr':src,
+                                          'dest-addr':dest,
+                                          'src-port':sp,
+                                          'dest-port':dp,
+                                          'flow-lbl':fl}
+            elif info['cls-type'] == std.TCLAS_FRAMECLASS_TYPE_8021Q:
+                # Fig 8-204
+                info['cls-params'] = {'vlan-tci':struct.unpack_from('=H',ps)[0]}
+            elif info['cls-type'] == std.TCLAS_FRAMECLASS_TYPE_FILTER_OFFSET:
+                # Fig 8-205
+                l = (len(ps)-2)/2
+                info['cls-params'] = {
+                    'filter-offset':struct.unpack_from('=H',ps)[0],
+                    'filter-val':ps[2:2+l],
+                    'filter-mask':ps[2+l:]
+                }
+            elif info['cls-type'] == std.TCLAS_FRAMECLASS_TYPE_IP:
+                # Std Fig 8-206 and Fig 8-207
+                # have to pull out ver to determine if ipv4 or ipv6
+                vers = struct.unpack_from('=B',ps)[0]
+                if vers == 4:
+                    vs = struct.unpack_from('=8B2H3B',ps,1)
+                    info['cls-params'] = {'vers':vers,
+                                          'src-addr':vs[0:4],
+                                          'dest-addr':vs[4:8],
+                                          'src-port':vs[8],
+                                          'dest-port':vs[9],
+                                          'dscp':vs[10],
+                                          'proto':vs[11],
+                                          'rsrv':vs[12]}
+                elif vers == 6:
+                    # note: flow label is a 3-byte octet, append a null byte
+                    src = ps[1:17]
+                    dest = ps[17:33]
+                    sp,dp,d,nh,fl = struct.unpack_from('=2H2BI',ps+'\x00',33)
+                    info['cls-params'] = {'vers':vers,
+                                          'src-addr':src,
+                                          'dest-addr':dest,
+                                          'src-port':sp,
+                                          'dest-port':dp,
+                                          'dscp':d,
+                                          'next-hdr':nh,
+                                          'flow-lbl':fl}
+            elif info['cls-type'] == std.TCLAS_FRAMECLASS_TYPE_8021D:
+                # Std Fig. 8-208
+                p,c,v = struct.unpack_from('=2BH',ps)
+                info['cls-params'] = {'802.1q-pcp':p,'802.1q-cfi':c,'802.1q-vid':v}
         elif eid == std.EID_SCHED: # Std 8.4.2.36
             # 12 bytes, 4 element
             sinfo,start,ser_int,spec_int = struct.unpack_from('=H3I',info)
@@ -626,18 +695,321 @@ def _parseie_(eid,info):
             # Msmt Token|Msmt Mode|Msmt Type|Msmt Req
             #          1|        1|        1|     var
             tkn,mod,typ = struct.unpack_from('=3B',info)
+            req = info[3:]
             info = {'tkn':tkn,
                     'mode':_eidmsmtreqmode_(mod),
-                    'type':typ,
-                    'req':info[3:]}
+                    'type':typ}
+
+            # Msmt req format depends on the type
+            if info['type'] <= std.EID_MSMT_REQ_TYPE_RPI:
+                # types basic, cca and rpi have the same format
+                # Std Figs. 1-106, 8-107, 8-108
+                c,s,d = struct.unpack_from('=BQD',req)
+                info['req'] = {'ch-num':c,'msmt-start':s,'msmt-dur':d}
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_CH_LOAD:
+                # Std Fig. 8-109
+                o,c,r,d = struct.unpack_from('=2B2H',req)
+                opt = req[6:]
+                info['req'] = {'op-class':o,'ch-num':c,'rand-intv':r,'msmt-dur':d}
+                if opt:
+                    info['rec']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqcl_)
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_NOISE:
+                # Std Fig. 8-111
+                # almost same as above except for optional subelements
+                o,c,r,d = struct.unpack_from('=2B2H',req)
+                opt = req[6:]
+                info['req'] = {'op-class':o,'ch-num':c,'rand-intv':r,'msmt-dur':d}
+                if opt:
+                    info['req']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqnh_)
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_BEACON:
+                # Std Fig 8-113
+                vs = struct.unpack_from('=2B2H7B',req)
+                opt = req[struct.calcsize('=2B2H7B'):]
+                info['req'] = {'op-class':vs[0],
+                               'ch-num':vs[1],
+                               'rand-intv':vs[2],
+                               'msmt-dur':vs[3],
+                               'msmt-mode':vs[4],
+                               'bssid':_hwaddr_(vs[5:])}
+                if opt:
+                    info['req']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqbeacon_)
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_FRAME:
+                # Std Fig. 8-115
+                vs = struct.unpack_from('=2B2H7B',req)
+                opt = req[struct.calcsize('=2B2H7B'):]
+                info['req'] = {'op-class':vs[0],
+                               'ch-num':vs[1],
+                               'rand-intv':vs[2],
+                               'msmt-dur':vs[3],
+                               'frame-req-type':vs[4],
+                               'mac-addr':_hwaddr_(vs[5:])}
+                if opt:
+                    info['rec']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqframe_)
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_STA:
+                # Std Fig. 8-116
+                vs = struct.unpack_from('=6B2HB',req)
+                opt = req[struct.calcsize('=6B2HB'):]
+                info['req'] = {'peer-mac':_hwaddr_(vs[0:6]),
+                               'rand-intv':vs[6],
+                               'msmt-dur':vs[7],
+                               'grp-id':vs[8]}
+
+                # the format of the optional fields depends on the grp-id
+                if info['req']['grp-id'] in std.EID_MSMT_REQ_SUBELEMENT_STA_STA_CNT:
+                    info['req']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqstasta_)
+                elif info['req']['grp-id'] in std.EID_MSMT_REQ_SUBELEMENT_STA_QOS_CNT:
+                    info['req']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqstaqos_)
+                elif info['req']['grp-id'] == std.EID_MSMT_REQ_SUBELEMENT_STA_RSNA:
+                    info['req']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqstarsna_)
+                else:
+                    if opt: info['req']['unparsed'] = opt
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_LCI:
+                s,lat,lon,alt = struct.unpack_from('=4B',req)
+                opt = req[4:]
+                info['req'] = {'loc-subj':s,
+                               'lat-res':lat,
+                               'lon-res':lon,
+                               'alt-res':alt}
+                if opt:
+                    info['req']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqlci_)
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_TX:
+                # Std Fig. 8-128
+                vs = struct.unpack_from('=2H8B',req)
+                opt = req[12:]
+                info['req'] = {'rand-intv':vs[0],
+                               'msmt-dur':vs[1],
+                               'peer-sta':_hwaddr_(vs[2:8]),
+                               'traffic-id':{'rsrv':bits.leastx(4,vs[8]), # Fig 8-129
+                                             'tid':bits.mostx(4,vs[8])},
+                               'bin0-range':vs[9]}
+                if opt:
+                    info['req']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqtx_)
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_MULTI:
+                # Fig 8-135
+                vs = struct.unpack('=2H6B',req)
+                rem = req[10:]
+                info['req'] = {'rand-intv':vs[0],
+                               'msmt-dur':vs[1],
+                               'grp-mac':_hwaddr_(vs[2:])}
+
+                # optional fields
+                if rem:
+                    # may be an optional mcast trigger condition prior to
+                    # the optional subelements
+                    sid = struct.unpack_from('=B',rem)[0]
+                    if sid == std.EID_MSMT_REQ_SUBELEMENT_MCAST_TRIGGER:
+                        c,t,d = struct.unpack_from('=3B',rem,2)
+                        info['req']['mcast-trigger-rpt'] = {
+                            'trigger-condition':c,
+                            'inactivity-timeout':t,
+                            'reactivation-delay':d}
+                        rem = rem[5:]
+                    if rem:
+                        opt = _parseiesubel_(rem,_iesubelmsmtreqmcastdiag_)
+                        info['req']['opt-subels'] = opt
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_LOC_CIVIC:
+                # Fig 8-138
+                s,t,u,i = struct.unpack_from('=3BH',req)
+                opt = req[5:]
+                info['req'] = {'loc-subj':s,'loc-type':t,'loc-units':u,'loc-intv':i}
+                if opt:
+                    info['req']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqloccivic_)
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_LOC_ID:
+                s,u,i = struct.unpack_from('=2BH',req)
+                opt = req[4:]
+                info['req'] = {'loc-subj':s,'loc-intv-units':u,'loc-serv-intv':i}
+                if opt:
+                    info['req']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtreqlid_)
+            elif info['type'] == std.EID_MSMT_REQ_TYPE_PAUSE:
+                p = struct.unpack_from('=H',req)[0]
+                opt = req[2:]
+                info['req'] = {'pause-time':p}
+                if opt: info['req']=_parseiesubel_(opt,_iesubelmsmtreqpause_)
         elif eid == std.EID_MSMT_RPT: # Std 8.4.2.24
             # Msmt Token|Msmt Mode|Msmt Type|Msmt Rpt
             #          1|        1|        1|     var
             tkn,mod,typ = struct.unpack_from('=3B',info)
+            rpt = info[3:]
             info = {'tkn':tkn,
                     'mode':_eidmstrptmode_(mod),
-                    'type':typ,
-                    'rpt':info[3:]}
+                    'type':typ}
+
+            # msmt rpt depends on the type
+            if info['type'] == std.EID_MSMT_RPT_TYPE_BASIC:
+                # Std Fig. 8-142
+                c,s,d,m = struct.unpack_from('=BQHB',rpt)
+                info['rpt'] = {'ch-num':c,
+                               'msmt-start-time':s,
+                               'msmt-dur':d,
+                               'map':_eidmsmtrptbasicmap_(m)}
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_CCA:
+                # Std Fig 8-144
+                c,s,d,f = struct.unpack_from('=BQHB',rpt)
+                info['rpt'] = {'ch-num':c,
+                               'msmt-start-time':s,
+                               'msmt-dur':d,
+                               'cca-busy-frac':f}
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_RPI:
+                # Fig 8-145
+                c,s,d = struct.unpack_from('=BQH',rpt)
+                info['rpt'] = {'ch-num':c,
+                               'msmt-start-time':s,
+                               'msmt-dur':d}
+                for i,r in enumerate(struct.unpack_from('=8B',rpt,11)):
+                    info['rpt']['rpi-{0}'.format(i)] = r
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_CH_LOAD:
+                # Std Fig. 8-146
+                o,n,s,d,l = struct.unpack_from('=2BQHB',rpt)
+                opt = info[struct.calcsize('=2BQHB'):]
+                info['rpt'] = {'op-class':o,
+                               'ch-num':n,
+                               'start-time':s,
+                               'msmt-dur':d,
+                               'ch-load':l}
+                if opt:
+                    info['rpt']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtrptvend_)
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_NOISE:
+                # Std Fig 8-147
+                o,n,s,d,i,a = struct.unpack_from('=2BQH2B',rpt)
+                ipis = struct.unpack_from('=11B',rpt,struct.calcsize('=2BQH2B'))
+                opt = rpt[struct.calcsize('=2BQH13B'):]
+                info['rpt'] = {'op-class':o,
+                               'ch-num':n,
+                               'start-time':s,
+                               'msmt-dur':d,
+                               'antenna-id':i,
+                               'anpi':a}
+                for i,ipi in enumerate(ipis):
+                    info['rpt']['ipi-{0}-density'.format(i)] = ipi
+
+                # optional subelements
+                if opt:
+                    info['rpt']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtrptvend_)
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_BEACON:
+                # Std Fig 8-148
+                vs = struct.unpack_from('=2BQH10BI',rpt)
+                opt = rpt[struct.calcsize('=2BQH10BI'):]
+                info['rpt'] = {'op-class':vs[0],
+                               'ch-num':vs[1],
+                               'start-time':vs[2],
+                               'msmt-dur':vs[3],
+                               'rpt-frame-info':{
+                                   'condensed-phy-type':bits.leastx(7,vs[4]),
+                                   'rpt-frame-type':bits.mostx(7,vs[4])
+                               },
+                               'rcpi':vs[5],
+                               'rsni':vs[6],
+                               'bssid':_hwaddr_(vs[7:13]),
+                               'antenna-id':vs[13],
+                               'parent-tsf':vs[14]}
+
+                # optional subelements
+                if opt:
+                    info['rpt']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtrptbeacon_)
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_FRAME:
+                # Std Fig 8-150
+                o,n,s,d = struct.unpack_from('=2BQH',rpt)
+                opt = info[struct.calcsize('=2BQH'):]
+                info['rpt'] = {'op-class':o,
+                               'ch-num':n,
+                               'start-time':s,
+                               'msmt-dur':d}
+
+                # optional subelements
+                if opt:
+                    info['rpt']['opt-subels']=_parseiesubel_(opt,_iesubelmsmtrptframe_)
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_STA:
+                # Std Fig. 8-153
+                d,g = struct.unpack_from('=HB',rpt)
+                info['rpt'] = {'msmt-dur':d,'grp-id':g}
+                rem = rpt[3:]
+
+                # statiscs group data
+                glen = std.EID_MST_STA_STATS_GID[info['rpt']['grp-id']]
+                info['rpt']['stats-grp-data'] = binascii.hexlify(rem[:glen])
+                opt = rem[glen:]
+                # TODO: See Std Fig 8-154 for parsing this
+
+                # optional subelements
+                if opt:
+                    info['rpt']['opt-subels'] = _parseiesubel_(opt,_iesubelmsmtrptsta_)
+                    # have to do additional proessing for all reason subelements
+                    for i,(oid,o) in enumerate(info['rpt']['opt-subels']):
+                        if oid == std.EID_MSMT_RPT_STA_STAT_REASON:
+                            rs = _eidmsmtrptstareason_(o,info['rpt']['grp-id'])
+                            info['rpt']['opt-subels'][i] = (oid,rs)
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_LCI:
+                # Std Fig. 8-162
+                info['rpt'] = _parselcirpt_(rpt)
+                opt = rpt[16:]
+
+                # option subelements
+                if opt:
+                    info['rpt']['opt-subels'] = _parseiesubel_(opt,_iesubelmsmtrptlci_)
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_TX:
+                # Std Fig. 8-165
+                vs = struct.unpack_from('=QH8B7IB',rpt)
+                info['rpt'] = {'msmt-start-time':vs[0],
+                               'msmt-dur':vs[1],
+                               'peer-addr':_hwaddr_(vs[2:8]),
+                               'traffic-id':{'rsrv':bits.leastx(4,vs[8]),
+                                             'tid':bits.mostx(4,vs[8])},
+                               'rpt-reason':_eidmsmtrpttxrptreason_(vs[9]),
+                               'tx-msdu-cnt':vs[10],
+                               'msdu-discarded-cnt':vs[11],
+                               'msdu-failed-cnt':vs[12],
+                               'msdu-mult-retry-cnt':vs[13],
+                               'qos-cf-polls-lost-cnt':vs[14],
+                               'avg-q-delay':vs[15],
+                               'avg-tx-delay':vs[16],
+                               'bin-0-range':vs[17]}
+                l = struct.calcsize('=QH8B7IB')
+                for i in xrange(5):
+                    info['rpt']['bin-'.format(i)] = struct.unpack_from('=I',rpt,l+(i*4))
+                opt = rpt[l+20:]
+
+                # optional subelements
+                if opt:
+                    info['rpt']['opt-subels'] = _parseiesubel_(opt,_iesubelmsmtrptvend_)
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_MULTI:
+                # Std Fig. 8-167
+                vs = struct.unpack_from('=QH7BI3H',rpt)
+                opt = rpt[struct.calcsize('=QH7BI3H'):]
+                info['rpt'] = {'msmt-time':vs[0],
+                               'msmt-dur':vs[1],
+                               'group-addr':_hwaddr_(vs[2:8]),
+                               'rpt-reason':_eidmsmtrptmcastreason_(vs[8]),
+                               'rx-msdu-cnt':vs[9],
+                               'seq-num-1':vs[10],
+                               'seq-num=n':vs[11],
+                               'rate':vs[12]}
+
+                # optional subelements
+                if opt:
+                    info['rpt']['opt-subels'] = _parseiesubel_(opt,_iesubelmsmtrptvend_)
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_LOC_CIVIC:
+                # Std Fig. 8-169
+                info['rpt'] = {'type':struct.unpack_from('=B',rpt)[0]}
+                opt = rpt[1:]
+
+                # after this is optional sublements followed by variable
+                # civic location (IAW IETF RFC 4776 this is min. 3-octet field)
+                # with similar header 1-octet ID|1-octet Length where ID = 99
+                # therefore we'll attempt parsing as a sublement and hope that
+                # civic location is left as is
+                # EID_MSMT_REQ_SUBELEMENT_CIVIC_LOC_TYPE_RFC4776 = 0
+                # EID_MSMT_REQ_SUBELEMENT_CIVIC_LOC_TYPE_VEND = 1
+                if opt:
+                    info['rpt']['opt-subels'] = _parseiesubel_(opt,_iesubelmsmtrptloccivic_)
+            elif info['type'] == std.EID_MSMT_RPT_TYPE_LOC_ID:
+                # Std Fig 8-182
+                info['rpt'] = {'exp-tsf':struct.unpack_from('=Q',rpt)[0]}
+                opt = rpt[8:]
+
+                # see above, optional sublements come prior to variable URI
+                # try to parse optional and hope URI gets included
+                if opt:
+                    info['rpt']['opt-subels'] = _parseiesubel_(opt,_iesubelmsmtrptlocid_)
         elif eid == std.EID_QUIET: # Std 8.4.2.25
             # elements: 1|1|2|2
             cnt,per,dur,off = struct.unpack_from('=2B2H',info)
@@ -670,13 +1042,16 @@ def _parseie_(eid,info):
             hte,bf,asel = struct.unpack_from('=HIB',info,19)
             info = {'ht-info':_eidhtcaphti_(hti),
                     'ampdu-param':_eidhtcapampdu_(ampdu),
-                    'mcs-set':mcs, # see Std Fig 8-251
+                    'mcs-set':_parsemcsset_(mcs),
                     'ht-ext-cap':_eidhtcaphte_(hte),
                     'tx-beamform':_eidhtcaptxbf_(bf),
                     'asel-cap':_eidhtcapasel_(asel)}
         elif eid == std.EID_QOS_CAP: # Std 8.4.2.37, 8.4.1.17
-            # 1 byte 1 element. Requires further parsing to get subfields
-            info = struct.unpack_from('=B',info)[0]
+            # 1 byte 1 element. Requires knowledge of frame being sent by
+            # AP or non-AP STA
+            info = {'qos-info':struct.unpack_from('=B',info)[0]}
+            #_eidqoscap_(v,True) Sent by AP
+            #_eidqoscap_(v,True) Sent by non-AP
         elif eid == std.EID_RSNE: # Std 8.4.2.27
             # contains up to and including the version field
             rem = info[2:]
@@ -687,8 +1062,7 @@ def _parseie_(eid,info):
             # _eidrsnesuitesel_()
             # group data cipher suite
             if rem:
-                vs = struct.unpack_from('=4B',rem)
-                info['grp-data-cs'] = _eidrsnesuitesel_(vs)
+                info['grp-data-cs'] = _parsesuitesel_(rem[:4])
                 rem = rem[4:]
 
             # pairwise cipher suite count & list
@@ -696,8 +1070,8 @@ def _parseie_(eid,info):
                 info['pairwise-cnt'] = struct.unpack_from('=H',rem)[0]
                 info['pairwise-cs-list'] = []
                 for i in xrange(info['pairwise-cnt']):
-                    pairwise = struct.unpack_from('=4B',rem,2+(i*4))
-                    info['pairwise-cs-list'].append(_eidrsnesuitesel_(pairwise))
+                    pwise = rem[2+(i*4):]
+                    info['pairwise-cs-list'].append(_parsesuitesel_(pwise))
                 rem = rem[2+(4*info['pairwise-cnt']):]
 
             # AKM suite count & list
@@ -705,8 +1079,8 @@ def _parseie_(eid,info):
                 info['akm-cnt'] = struct.unpack_from('=H',rem)[0]
                 info['akm-list'] = []
                 for i in xrange(info['akm-cnt']):
-                    akm = struct.unpack_from('=4B',rem,2+(i*4))
-                    info['akm-list'].append(_eidrsnesuitesel_(akm))
+                    akm = rem[2+(i*4):]
+                    info['akm-list'].append(_parsesuitesel_(akm))
                 rem = rem[2+(4*info['akm-cnt']):]
 
             # RSN capabilities
@@ -724,9 +1098,7 @@ def _parseie_(eid,info):
                     rem = rem[16:]
 
             # group mgmt cipher suite
-            if rem:
-                vs = struct.unpack_from('=4B',rem)
-                info['grp-mgmt-cs'] = _eidrsnesuitesel_(vs)
+            if rem: info['grp-mgmt-cs'] = _parsesuitesel_(rem)
         elif eid == std.EID_AP_CH_RPT: # Std 8.4.2.38
             # min 1 octet followed by variable list of channels
             opclass = struct.unpack_from('=B',info)[0]
@@ -772,11 +1144,13 @@ def _parseie_(eid,info):
             # one 20-octet element w/ subfields of varying lengths
             # we let a helper parse this
             info = _parseinfoeldse_(info)
-        elif eid == std.EID_OP_CLASSES: # Std 8.4.256
+        elif eid == std.EID_OP_CLASSES: # Std 8.4.2.56
             # 2 elements, 1 byte, & 1 2 to 253
             # see 10.10.1 and 10.11.9.1 for use of op-classes element
-            opclass = struct.unpack_from('=B',info)
-            info = {'op-class':opclass,'op-classes':info[1:]}
+            info = {
+                'cur-op-class':struct.unpack_from('=B',info)[0],
+                'op-classes':[struct.unpack_from('=B',x)[0] for x in info[1:]]
+            }
         elif eid == std.EID_EXT_CH_SWITCH: # Std 8.4.2.55
             # 4 octect, 4 element
             mode,opclass,ch,cnt = struct.unpack_from('=4B',info)
@@ -789,10 +1163,9 @@ def _parseie_(eid,info):
             #      1|         5|     16
             # The HT OP info can be further divided into 1|2|2
             pri,htop1,htop2,htop3 = struct.unpack_from('=2B2H',info)
-            mcs = info[-16:]
             info = {'pri-ch':pri,
                     'ht-op-info':_eidhtopinfo_(htop1,htop2,htop3),
-                    'mcs-set':mcs}
+                    'mcs-set':_parsemcsset_(info[-16:])}
         elif eid == std.EID_SEC_CH_OFFSET: # 8.4.2.22
             info = struct.unpack_from('=B',info)[0]
         elif eid == std.EID_BSS_AVG_DELAY: # Std 8.4.2.41
@@ -819,10 +1192,9 @@ def _parseie_(eid,info):
             # variable 2 octet uint for nonzero bit in bitmask
             bm = struct.unpack_from('=H',info)[0]
             rem = info[2:]
-            cs = []
-            for i in xrange(0,len(rem),2): cs.append(struct.unpack_from('=H',rem,i))
-            info = {'admin-cap-bm':_edibssavailadmin_(bm),
-                    'admin-cap-list':cs}
+            info = {'admin-cap-bm':_edibssavailadmin_(bm),'admin-cap-list':[]}
+            for i in xrange(0,len(rem),2):
+                info['admin-cap-list'].append(struct.unpack_from('=H',rem,i))
         elif eid == std.EID_BSS_AC_DELAY: # Std 8.4.2.46
             # four 1 byte elements, each is a scalar indicator as in BSS Average
             # Access delay
@@ -834,24 +1206,29 @@ def _parseie_(eid,info):
         elif eid == std.EID_TIME_ADV: # Std 8.4.2.63
             # See Std Figure 8-261 Only timing capabilities guaranteed to be present
             tcap = struct.unpack_from('=B',info)[0]
+            if tcap == 0: info = {'timing-cap':tcap}
             if tcap == 1:
                 # time value field & time error field present
-                info = {'timing-cap':tcap,'remaining':info[1:]}
+                info = {'timing-cap':tcap,
+                        'time-val':info[1:11],
+                        'time-err':struct.unpack_from('=Q',info[11:16]+'\x00\x00\x00')[0]}
             elif tcap == 2:
-                # time value field, time error field &time update counter field present
-                info = {'timing-cap':tcap,'remaining':info[1:]}
-            else:
-                # tcap = 0 is valid, all others reserved
-                info = {'timing-cap':tcap}
+                # time value field, time error field & time update counter field present
+                # for time value see Table 8-132
+                info = {'timing-cap':tcap,
+                        'time-val':_parsetimeval_(info[1:11]),
+                        'time-err':struct.unpack_from('=Q',info[11:16]+'\x00\x00\x00')[0],
+                        'time-update-cntr':struct.unpack_from('=B',info[-1])[0]}
         elif eid == std.EID_RM_ENABLED: # Std 8.4.2.47
             # 1 element, a 5-byte octet stream
             vs = struct.unpack_from('=5B',info)
             info = _eidrmenable_(vs)
-        elif eid == std.EID_MUL_BSSID: # Std 8.4.2.48
+        elif eid == std.EID_MULT_BSSID: # Std 8.4.2.48
             # 1 octet + variable length subelements
+            mbi = struct.unpack('=B',info)[0]
             rem = info[1:]
-            info = {'max-bssid':struct.unpack('=B',info)[0]}
-            if rem: info['opt-subels'] = _parseiesubel_(rem)
+            info = {'max-bssid-indicator':mbi}
+            if rem: info['opt-subels'] = _parseiesubel_(rem,_iesubelmultbssid_)
         elif eid == std.EID_20_40_COEXIST: # Std 8.4.2.62
             # 1 element, 1 byte
             info = _eid2040coexist_(struct.unpack_from('=B',info)[0])
@@ -886,7 +1263,18 @@ def _parseie_(eid,info):
             # Token|Type|Resp limit|Request
             #     1|   1|         1|    var
             tkn,typ,lim = struct.unpack_from('=3B',info)
-            info = {'tkn':tkn,'type':typ,'res-lim':lim,'req':info[3:]}
+            rem = info[3:]
+            info = {'tkn':tkn,'type':typ,'res-lim':lim}
+
+            # based on event type (NOTE: for a WNM Log request, there is no field
+            if info['type'] == std.EVENT_REQUEST_TYPE_TRANSITION: # Std 8.4.2.69.2
+                info['request'] = _parseiesubel_(rem,_iesubelevreqtransistion_)
+            elif info['type'] == std.EVENT_REQUEST_TYPE_RSNA: # Std 8.4.2.69.3
+                info['request'] = _parseiesubel_(rem,_iesubelevreqrsna_)
+            elif info['type'] == std.EVENT_REQUEST_TYPE_P2P:  # Std 8.4.2.69.4
+                info['request'] = _parseiesubel_(rem,_iesubelevreqp2p_)
+            elif info['type'] == std.EVENT_REQUEST_TYPE_VEND: # Std 8.4.2.69.5
+                info['request'] = _parseiesubel_(rem,_iesubelevreqvend_)
         elif eid == std.EID_EVENT_RPT: # Std 8.4.2.70
             # Token|Type|RPT Stat|   TSF |   UTC | Time |Report
             #     1|   1|       1|(opt) 8|opt(10)|opt(5)|   var
@@ -896,11 +1284,60 @@ def _parseie_(eid,info):
 
             # remainder are only present if rpt is successful
             if info['rpt-stat'] == std.EVENT_REPORT_STATUS_SUCCESS:
-                info['tsf'] = rem[:8]
-                info['utc-offset'] = rem[8:18]
-                info['time-err'] = rem[18:23]
+                # IAW Std 6.3.42.2.2 TSF is an integer
+                info['tsf'] = struct.unpack_from('=Q',rem)[0]
+                info['utc-offset'] = _parsetimeval_(rem[8:18])
+                info['time-err'] = struct.unpack_from('=Q',rem[18:23]+'\x00\x00\x00')[0]
+
+                # the event report field contains 1 event report based on the
+                # event type
                 rpt = rem[23:]
-                if rpt: info['rpt'] = rpt
+                if info['type'] == std.EVENT_REQUEST_TYPE_TRANSITION:
+                    # Std Fig. 8-282
+                    src = _hwaddr_(struct.unpack_from('=6B',rpt)[0])
+                    tgt = _hwaddr_(struct.unpack_from('=6B',rpt,6)[0])
+                    vs = struct.unpack_from('=HBH4B',rpt,12)
+                    info['report'] = {'src-bssid':src,
+                                      'tgt-bssid':tgt,
+                                      'trans-time':vs[0],
+                                      'trans-reason':vs[1],
+                                      'trans-result':vs[2],
+                                      'src-rcpi':vs[3],
+                                      'src-rsni':vs[4],
+                                      'tgt-rcpi':vs[5],
+                                      'tgt-rsni':vs[6]}
+                elif info['type'] == std.EVENT_REQUEST_TYPE_RSNA:
+                    # Std Fig. 8-283
+                    info['report'] = {
+                        'tgt-bssid':_hwaddr_(struct.unpack_from('=6B',rpt)),
+                        'auth-type':_parsesuitesel_(rpt[6:])
+                    }
+                    rem = rpt[10:]
+                    # look at para under fig 8-283. AKM suite is defined
+                    # as a string of the form 00-0f-AC:1
+                    # TODO: how to determine if EAP method is 1 octet or 8 octets
+                    #at = "{0}:{1}".format(info['report']['auth-type']['oui'],
+                    #                      info['report']['auth-type']['suite-type'])
+                    #if at == '00-0F-AC:1' or at == '00-0F-AC:3':
+                    info['report']['unparsed'] = rem
+                elif info['type'] == std.EVENT_REQUEST_TYPE_P2P:
+                    # Std Fig 8-284
+                    peer = _hwaddr_(struct.unpack_from('=6B',rpt))
+                    o,cn,p = struct.unpack_from('=3B',rpt,6)
+                    ct = struct.unpack_from('=I',rpt[9:12]+'\x00')[0]
+                    ps = struct.unpack_from('=B',rpt[-1])[0]
+                    info['report'] = {'peer-addr':peer,
+                                      'op-class':o,
+                                      'ch-num':cn,
+                                      'sta-tx-pwr':p,
+                                      'conn-time':ct,
+                                      'peer-status':ps}
+                elif info['type'] == std.EVENT_REQUEST_TYPE_WNM_LOG:
+                    # Std 8.4.2.70.5
+                    info['report'] = {'wnm-log-msg':rpt}
+                elif info['type'] == std.EVENT_REQUEST_TYPE_VEND:
+                    # Std 8.4.2.70.6
+                    info['report'] = _parseiesubel_(rpt,_iesubelevreqvend_)
         elif eid == std.EID_DIAG_REQ: # Std 8.3.2.71
             # Token|Type|Timeout|Optional
             #     1|   1|      2|     var
@@ -936,11 +1373,18 @@ def _parseie_(eid,info):
             info = {'ssids':_parseiesubel_(info,_iesubelssid_)}
         elif eid == std.EID_MULT_BSSID_INDEX: # Std 8.4.2.76
             # 1 element @ 1 octet, 2 optional 1 octet elements
-            # see Std 10.1.3.6 and 10.11.14
-            # Not sure if "either or" can be present or "all or none"
-            fmt = "={}B".format(len(info))
-            vs = struct.unpack_from(fmt,info)
-            info = {'bssid-idx':vs[0],'opt':list(vs[1:])}
+            # from the section it appears that neither element is present
+            # in a probe response, implying that they are otherwise present
+            #fmt = "={}B".format(len(info))
+            idx = struct.unpack_from('=B',info)[0]
+            rem = info[1:]
+            info = {'bssid-idx':idx}
+            if len(rem) == 2:
+                info['dtim-per'] = struct.unpack_from('=B',rem)[0]
+                info['dtim-cnt'] = struct.unpack_from('=B',rem,1)[0]
+            elif len(rem) == 1:
+                # unsure how to handle this
+                info['dtim-unk'] = struct.unpack_from('=B',rem)[0]
         elif eid == std.EID_FMS_DESC: # Std 8.4.2.77
             # 1 element @ 1 byte followed by n FMS counters & m FMSIDs
             # FMS counters are 1 octet as are FMSIDs
@@ -1318,10 +1762,13 @@ def _parseie_(eid,info):
                     'metric':met}
         elif eid == std.EID_EXT_CAP: # Std 8.4.2.29
             # capabilities bitmask a minimum of 49 individual bits
-            # have to figure out if it easier using n 1-byte octets and
-            # translating the bitmask accordingly or try and use n-byte field
-            #n = len(info)
-            pass
+            # we convert to a 8-octet field by appending null bytes.
+            # We however miss any reserved at bit 49 that were present
+            try:
+                n = 8-len(info) # additional null bytes to add to make 8-octet
+                info = _eidextcap_(struct.unpack_from('=Q',info+('\x00'*n)))
+            except TypeError:
+                raise EnvironmentError(eid,"subelement has length".format(len(info)))
         elif eid == std.EID_PREQ: # Std 8.4.2.115
             # See Fig 8-369 initial mandatory fields are 1|1|1|4|6|4 & are
             # flags|hop count|ttl|path disc id|originator|originator seq #
@@ -1446,7 +1893,7 @@ def _parseie_(eid,info):
             # Suite|Local Nonce|Peer Nonce|Key Replay Counter|GTK data|IGTK Data
             #     4|         32|        32|           (opt) 8|     var|      var
             info = {
-                'cipher-suite':_eidrsnesuitesel_(struct.unpack_from('=4B',info)),
+                'cipher-suite':_parsesuitesel_(info),
                 'local-nonce':binascii.hexlify(info[4:36]),
                 'peer-pnonce':binascii.hexlify(info[36:68]),
                 'remainder':info[68:]
@@ -1554,15 +2001,26 @@ def _iesubelneighrpt_(s,sid):
         ret = _parseie_(std.EID_RM_ENABLED,s)
     elif sid == std.EID_NR_MULT_BSSID:
         # same format as multiple bssid (8.4.2.48)
-        ret = _parseie_(std.EID_MUL_BSSID,s)
+        ret = _parseie_(std.EID_MULT_BSSID,s)
     elif sid == std.EID_NR_VEND_SPEC:
         # same format as vendor specific
         ret = _parseie_(std.EID_NR_VEND_SPEC,s)
     return ret
 
+# MULT BSSID optional subelements Std Table 8-120 & figurs below
+def _iesubelmultbssid_(s,sid):
+    """ :returns: parsed opt subelement of mult bssid element """
+    ret = s
+    if sid == std.EID_MUL_BSSID_NONTRANS:
+        # list of elements for one or more AP defined as
+        ret = {'nontrans-bssid-profile':s}
+    elif sid == std.EID_MUL_BSSID_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
 # FTE optional subelements Std Table 8-121 & figure commented below
 def _iesubelfte_(s,sid):
-    """ :returns: parsed subelement of FTE element """
+    """ :returns: parsed opt subelement of FTE element """
     ret = s
     if sid == std.EID_FTE_RSRV: pass
     elif sid == std.EID_FTE_PMK_R1:
@@ -1601,8 +2059,9 @@ def _iesubeldiag_(s,sid):
         ret = {'cred-vals':[struct.unpack('=B',x)[0] for x in s]}
     elif sid == std.EID_DIAG_SUBELEMENT_AKM:
         # Fig 8-289
-        ret = {'oui':_hwaddr_(struct.unpack_from('=3B',s)),
-               'akm-suite':struct.unpack_from('=B',s,3)[0]}
+        ret = _parsesuitesel_(s)
+        #ret = {'oui':_hwaddr_(struct.unpack_from('=3B',s)),
+        #       'akm-suite':struct.unpack_from('=B',s,3)[0]}
     elif sid == std.EID_DIAG_SUBELEMENT_AP:
         # Fig 8-290
         vs = struct.unpack_from('=8B',s)
@@ -1779,12 +2238,26 @@ def _iesubelfmsreq_(s,sid):
         # Note: the 4-byte rate identification is defined in 8.4.1.32
         # as 1|1|2
         di,mi,m,i,r = struct.unpack_from('=4BH',s)
+        rem = s[6:]
         ret = {'delv-intv':di,
                'max-delv-intv':mi,
                'rate-ident':{'mask':_rateidmask_(m),
                              'mcs-index':i,
-                             'rate':r},
-               'unparsed':s[6:]}
+                             'rate':r}}
+
+        # there are one or more tclas elements folled by an option tclas
+        # processing element
+        while rem:
+            eid,tlen = struct.unpack_from('=2B',rem)
+            if eid == std.EID_TCLAS:
+                if not 'tclas' in ret: ret['tclas'] = []
+                ret['tclas'].append(_parseie_(std.EID_TCLAS,rem[:tlen]))
+                ret = ret[2+tlen:]
+            elif eid == std.EID_TCLAS_PRO:
+                ret['tclas-pro'] = _parseie_(std.EID_TCLAS_PRO,ret)
+                # could use a break here but want to make sure
+                # there are not hanging elements
+                ret = ret[3:]
     elif sid == std.EID_FMS_REQ_SUBELEMENT_VEND:
         ret = _parseie_(std.EID_VEND_SPEC,s)
     return ret
@@ -1806,8 +2279,22 @@ def _iesubelfmsresp_(s,sid):
                              'rate':vs[7]},
                'mcast-addr':a}
     elif sid == std.EID_FMS_RESP_SUBELEMENT_TCLAS: # Std Fig. 8-330
-        ret = {'fms-id':struct.unpack_from('=B',s),
-               'unparsed':s[1:]}
+        ret = {'fms-id':struct.unpack_from('=B',s)}
+        rem = s[1:]
+
+        # there are one or more tclas elements folled by an option tclas
+        # processing element
+        while rem:
+            eid,tlen = struct.unpack_from('=2B',rem)
+            if eid == std.EID_TCLAS:
+                if not 'tclas' in ret: ret['tclas'] = []
+                ret['tclas'].append(_parseie_(std.EID_TCLAS,rem[:tlen]))
+                ret = ret[2+tlen:]
+            elif eid == std.EID_TCLAS_PRO:
+                ret['tclas-pro'] = _parseie_(std.EID_TCLAS_PRO,ret)
+                # could use a break here but want to make sure
+                # there are not hanging elements
+                ret = ret[3:]
     elif sid == std.EID_FMS_RESP_SUBELEMENT_VEND:
         ret = _parseie_(std.EID_VEND_SPEC,s)
     return ret
@@ -1817,7 +2304,20 @@ def _iesubeltfsreq_(s,sid):
     """ :returns: parsed tfs request subelement """
     ret = s
     if sid == std.EID_TFS_SUBELEMENT_TFS:
-        ret = {'unparsed':s}
+        # there are one or more tclas elements folled by an option tclas
+        # processing element
+        ret = {}
+        while s:
+            eid,tlen = struct.unpack_from('=2B',s)
+            if eid == std.EID_TCLAS:
+                if not 'tclas' in ret: ret['tclas'] = []
+                ret['tclas'].append(_parseie_(std.EID_TCLAS,s[:tlen]))
+                s = s[2+tlen:]
+            elif eid == std.EID_TCLAS_PRO:
+                s['tclas-pro'] = _parseie_(std.EID_TCLAS_PRO,ret)
+                # could use a break here but want to make sure
+                # there are not hanging elements
+                s = s[3:]
     elif sid == std.EID_TFS_SUBELEMENT_VEND:
         ret = _parseie_(std.EID_VEND_SPEC,s)
     return ret
@@ -1828,6 +2328,530 @@ def _iesubelmsmtpilot_(s,sid):
     ret = s
     # ATT only vendor specific is defined
     if sid == std.EID_VEND_SPEC: ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Request subelements for type Channel load Std Table 8-60 and figures below
+def _iesubelmsmtreqcl_(s,sid):
+    """ :returns: parsed subelement of type channel load in msmt request """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_CL_RPT:
+        # Std fig. 8-110
+        c,r = struct.unpack_from('=2B',s)
+        ret = {'rpt-condition':c,'ch-load-ref-val':r}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_CL_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Request subelements for type Noise Histogram Std Table 8-62 and figures below
+def _iesubelmsmtreqnh_(s,sid):
+    """ :returns: parsed subelement of type channel load in msmt request """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_NH_RPT:
+        # Std fig. 8-112
+        c,a = struct.unpack_from('=2B',s)
+        ret = {'rpt-condition':c,'anpi-ref-val':a}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_NH_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Request subelements for type Beaon Std Table 8-65 and figures below
+def _iesubelmsmtreqbeacon_(s,sid):
+    """ :returns: parsed subelement of type beacon in msmt request """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_BEACON_SSID:
+        ret = {'ssid':_iesubelssid_(s)}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_BEACON_BRI:
+        # Std Fig. 8-114
+        r,t = struct.unpack_from('=2B',s)
+        ret = {'rpt-condition':r,'threshold':t}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_BEACON_RPT:
+        # Std Table 8-67
+        ret = {'rpt-detail':struct.unpack_from('=B',s)}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_BEACON_REQ:
+        # same as Std 8.4.2.13
+        ret = _parseie_(std.EID_REQUEST,s)
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_BEACON_AP_CH_RPT:
+        # same as Std 8.4.2.38
+        ret = _parseie_(std.EID_AP_CH_RPT,s)
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_BEACON_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+#### NOTE: next three could probably be combined
+
+# MSMT Request subelements for type Frame Request Std Table 8-68 and figures below
+def _iesubelmsmtreqframe_(s,sid):
+    """ :returns: parsed subelement of type frame request in msmt request """
+    ret = s
+    # For now, not going to bother with defining the element ids in Table 8-68
+    # since the only subelement is a vend specific
+    if sid == std.EID_VEND_SPEC: ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Request subelements for type STA Request Sta counters Std Table 8-70 and figures below
+def _iesubelmsmtreqstasta_(s,sid):
+    """ :returns: parsed subelement of type sta request for sta counters in msmt request """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_STA_RPT:
+        # Std Fig. 8-117
+        cnt,to,t = struct.unpack_from('=I2H',s)
+        ts = s[8:]
+        ret = {'msmt-cnt':cnt,
+               'trigger-timeout':to,
+               'sta-cntr-trigger-cond':_stacntrtriggerconds_(t),
+               'thresholds':{}}
+
+        # optional count fields are 4-bytes assuming they are appending in order
+        for thresh in ['fail','fcs-error','mult-retry','dup','rts-fail','ack-fail','retry-cnt']:
+            if ret['sta-cntr-trigger-cond'][thresh]:
+                ret['thresholds'][thresh] = struct.unpack_from('=I',ts)[0]
+                ts = ts[4:]
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_STA_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# STA Counter Trigger Conditions Std Fig. 8-118
+_STA_COUNTER_TRIGGER_CONDITIONS_ = {
+    'fail':(1<<0),
+    'fcs-error':(1<<1),
+    'mult-retry':(1<<2),
+    'dup':(1<<3),
+    'rts-fail':(1<<4),
+    'ack-fail':(1<<5),
+    'retry-cnt':(1<<6)
+}
+_STA_COUNTER_TRIGGER_CONDITIONS_RSRV_START_ = 7
+def _stacntrtriggerconds_(v):
+    """ :returns: parsed sta counter tigger conditions """
+    s = bits.bitmask_list(_STA_COUNTER_TRIGGER_CONDITIONS_,v)
+    s['rsrv'] = bits.mostx(_STA_COUNTER_TRIGGER_CONDITIONS_RSRV_START_,v)
+
+# MSMT Request subelements for type STA Request QoS counters Std Table 8-70 and figures below
+def _iesubelmsmtreqstaqos_(s,sid):
+    """ :returns: parsed subelement of type sta request for qos counters in msmt request """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_STA_RPT:
+        # Std Fig. 8-119
+        cnt,to,t = struct.unpack_from('=I2H',s)
+        ts = s[8:]
+        ret = {'msmt-cnt':cnt,
+               'trigger-timeout':to,
+               'qos-cntr-trigger-cond':_qoscntrtriggerconds_(t),
+               'thresholds':{}}
+
+        # optional count fields are 4-bytes assuming they are appending in order
+        for thresh in ['fail','retry-cnt','mult-retry','dup','rts-fail','ack-fail','discarded']:
+            if ret['sta-cntr-trigger-cond'][thresh]:
+                ret['thresholds'][thresh] = struct.unpack_from('=I',ts)[0]
+                ts = ts[4:]
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_STA_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# QOS Counter Trigger Conditions Std Fig. 8-120
+_QOS_COUNTER_TRIGGER_CONDITIONS_ = {
+    'fail':(1<<0),
+    'retry-cnt':(1<<1),
+    'mult-retry':(1<<2),
+    'dup':(1<<3),
+    'rts-fail':(1<<4),
+    'ack-fail':(1<<5),
+    'discarded':(1<<6)
+}
+_QOS_COUNTER_TRIGGER_CONDITIONS_RSRV_START_ = 7
+def _qoscntrtriggerconds_(v):
+    """ :returns: parsed sta counter tigger conditions """
+    s = bits.bitmask_list(_QOS_COUNTER_TRIGGER_CONDITIONS_,v)
+    s['rsrv'] = bits.mostx(_QOS_COUNTER_TRIGGER_CONDITIONS_RSRV_START_,v)
+
+# MSMT Request subelements for type STA Request RSNA counters Std Table 8-70 and figures below
+def _iesubelmsmtreqstarsna_(s,sid):
+    """ :returns: parsed subelement of type sta request for qos counters in msmt request """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_STA_RPT:
+        # Std Fig. 8-121
+        cnt,to,t = struct.unpack_from('=I2H',s)
+        ts = s[8:]
+        ret = {'msmt-cnt':cnt,
+               'trigger-timeout':to,
+               'rsna-cntr-trigger-cond':_rsnacntrtriggerconds_(t),
+               'thresholds':{}}
+
+        # optional count fields are 4-bytes assuming they are appending in order
+        for thresh in ['cmacicv-err','cmarc-replay','robust-ccmp-replay','tkipicv-err','tkip-replay','ccmp-decrypt','ccmp-replay']:
+            if ret['sta-cntr-trigger-cond'][thresh]:
+                ret['thresholds'][thresh] = struct.unpack_from('=I',ts)[0]
+                ts = ts[4:]
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_STA_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# RSNA Counter Trigger Conditions Std Fig. 8-122
+_RSNA_COUNTER_TRIGGER_CONDITIONS_ = {
+    'cmacicv-err':(1<<0),
+    'cmarc-replay':(1<<1),
+    'robust-ccmp-replay':(1<<2),
+    'tkipicv-err':(1<<3),
+    'tkip-replay':(1<<4),
+    'ccmp-decrypt':(1<<5),
+    'ccmp-replay':(1<<6)
+}
+_RSNA_COUNTER_TRIGGER_CONDITIONS_RSRV_START_ = 7
+def _rsnacntrtriggerconds_(v):
+    """ :returns: parsed sta counter tigger conditions """
+    s = bits.bitmask_list(_RSNA_COUNTER_TRIGGER_CONDITIONS_,v)
+    s['rsrv'] = bits.mostx(_RSNA_COUNTER_TRIGGER_CONDITIONS_RSRV_START_,v)
+
+# MSMT REQUEST->Type LCI optional subfields Std Table 8-72 & figures below
+def _iesubelmsmtreqlci_(s,sid):
+    """ :returns: parsed lci optional subfield """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_LCI_AZIMUTH: # std Fig. 8-124
+        ret = {'azimuth-req':_eidmsmtreqlciazimuth_(struct.unpack_from('=B',s)[0])}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_LCI_REQUESTING:
+        ret = {'originator-mac':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_LCI_TARGET:
+        ret = {'target-mac':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_LCI_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# LCI AZIMUTH REQUEST AZIMUTH REQUST FIELD Std Fig. 8-125
+_LCI_AZIMUTH_REQ_ = {'azimuth-type':(1<<4)}
+_LCI_AZIMUTH_REQ_RES_DIVIDER_    = 4
+_LCI_AZIMUTH_REQ_RES_RSRV_START_ = 5
+def _eidmsmtreqlciazimuth_(v):
+    """ :returns: parsed azimuth request subelement of MSMT req """
+    az = bits.bitmask_list(_LCI_AZIMUTH_REQ_,v)
+    az['azimuth-resolution'] = bits.leastx(_LCI_AZIMUTH_REQ_RES_DIVIDER_,v)
+    az['rsrv'] = bits.mostx(_LCI_AZIMUTH_REQ_RES_RSRV_START_,v)
+    return az
+
+# MSMT REQUEST->Type TX optional subfields Std Table 8-73 & figures below
+def _iesubelmsmtreqtx_(s,sid):
+    """ :returns: parsed tx optional subfield """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_TX_RPT:
+        c,ae,ce,d,m,to = struct.unpack_from('=6B',s)
+        ret = {'trigger-cond':_eidmsmtreqtxtrigger_(c),
+               'avg-err-thresh':ae,
+               'cons-err-thresh':ce,
+               'delay-thresh':_eidmsmtreqtxdelay_(d),
+               'msmt-cnt':m,
+               'trigger-timeout':to}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_TX_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# TX TRIGGER CONDITION Std Fig. 8-132
+_TX_TRIGGER_COND_ = {'avg':(1<<0),'consecutive':(1<<1),'delay':(1<<2)}
+_TX_TRIGGER_COND_RSRV_START_ = 3
+def _eidmsmtreqtxtrigger_(v):
+    """ :returns: parsed trigger reporting for TX """
+    tc = bits.bitmask_list(_TX_TRIGGER_COND_,v)
+    tc['rsrv'] = bits.mostx(_TX_TRIGGER_COND_RSRV_START_,v)
+    return tc
+
+# TX DELAYED MSDU Std Fig. 8-133
+_TX_DELAYED_DIVIDER_ = 2
+def _eidmsmtreqtxdelay_(v):
+    """ :returns: parsed tx delay """
+    d = {'delayed-msdu-range':bits.leastx(_TX_DELAYED_DIVIDER_,v),
+         'delayed-msdu-cnt':bits.mostx(_TX_DELAYED_DIVIDER_,v)}
+    return d
+
+# MSMT Request subelements for type Pause Std Table 8-75
+def _iesubelmsmtreqpause_(s,sid):
+    """ :returns: parsed subelement of type frame request in msmt request """
+    ret = s
+    # For now, not going to bother with defining the element ids in Table 8-75
+    # since the only subelement is a vend specific
+    if sid == std.EID_VEND_SPEC: ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Request subelement for type MCAST Diag Std Table 8-76
+def _iesubelmsmtreqmcastdiag_(s,sid):
+    """ :returns: parsed subelement of type mcast diag """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_MCAST_TRIGGER:
+        c,t,d = struct.unpack_from('=3B',s)
+        ret = {'mcast-trigger-rpt':{'trigger-condition': c,
+                                    'inactivity-timeout': t,
+                                    'reactivation-delay': d}}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_MCAST_VEND:
+        ret =  _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Request subelements for type Location civic request Std Table 8-79
+def _iesubelmsmtreqloccivic_(s,sid):
+    """ :returns: parsed subelement of type location civic in msmt request """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_LOC_CIVIC_ORIGIN:
+        ret = {'originator':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_LOC_CIVIC_TARGET:
+        ret = {'target':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_LOC_CIVIC_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Request subelements for Type Location Id Std Table 8-80
+def _iesubelmsmtreqlid_(s,sid):
+    """ :returns: parsed subelement of type location civic in msmt request """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_LOC_ID_ORIGIN:
+        ret = {'originator':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_LOC_ID_TARGET:
+        ret = {'target':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_LOC_ID_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Report subelements for:
+# Type Channel Load Std Table 8-83
+# Type Noise Histogram Std Table 8-85
+# Type Tx Stream/Category Std Table 8-92
+# Type Mcast Diag Std Table 8-93
+def _iesubelmsmtrptvend_(s,sid):
+    """ :returns: parsed ch load subelement """
+    ret = s
+    # only vend is currently defined
+    if sid == std.EID_VEND_SPEC: ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Report subelements for Type Beacon Std Table 8-86
+def _iesubelmsmtrptbeacon_(s,sid):
+    """ :returns: parsed beacon subelement """
+    ret = s
+    # we leave the reported frame body as is for now
+    #if sid == std.EID_MSMT_RPT_BEACON_FRAME_BODY:
+    if sid == std.EID_MSMT_RPT_BEACON_VEND: ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Report subelements for Type Frame Std Table 8-87
+def _iesubelmsmtrptframe_(s,sid):
+    """ :returns: parsed frame subelement """
+    ret = s
+    if sid == std.EID_MSMT_RPT_FRAME_CNT_RPT:
+        # Fig 8-151, 8-152
+        ret = []
+        n = len(s)/19
+        for i in xrange(n):
+            vs = struct.unpack_from('=17BH',s,i*19)
+            ent = {'tx-addr':_hwaddr_(vs[0:6]),
+                   'bssid':_hwaddr_(vs[6:12]),
+                   'phy-type':vs[12],
+                   'avg-rcpi':vs[13],
+                   'last-rsni':vs[14],
+                   'last-rcpi':vs[15],
+                   'antenna-id':vs[16],
+                   'frmae-cnt':vs[17]}
+            ret.append(ent)
+    elif sid == std.EID_MSMT_RPT_FRAME_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Report subelements for Type STA statistics Std Table 8-89
+def _iesubelmsmtrptsta_(s,sid):
+    """ :returns: parsed STA optional subelement """
+    ret = s
+    if sid == std.EID_MSMT_RPT_STA_STAT_REASON:
+        ret = {'reason':struct.unpack_from('=B',s)[0]}
+    elif sid == std.EID_MSMT_RPT_STA_STAT_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Report subelements for Type LCI Std Table 8-90
+def _iesubelmsmtrptlci_(s,sid):
+    """ :returns: parsed LCI optional subelement """
+    ret = s
+    if sid == std.EID_MSMT_RPT_LCI_AZIMUTH:
+        ret = {
+            'azimuth-rpt':_iesubelmsmtrptlicazimuth_(struct.unpack_from('=H',s)[0])
+        }
+    elif sid == std.EID_MSMT_RPT_LCI_ORIGIN:
+        ret = {'originator':_hwaddr_(struct.unpack('=6B',s))}
+    elif sid == std.EID_MSMT_RPT_LCI_TARGET:
+        ret = {'target':_hwaddr_(struct.unpack('=6B',s))}
+    elif sid == std.EID_MSMT_RPT_LCI_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Report->Azimuth Report fields Std Fig. 8-164
+_EID_MSMT_RPT_LCI_AZIMUTH_TYPE_START_       = 2
+_EID_MSMT_RPT_LCI_AZIMUTH_TYPE_LEN_         = 1
+_EID_MSMT_RPT_LCI_AZIMUTH_RESOLUTION_START_ = 3
+_EID_MSMT_RPT_LCI_AZIMUTH_RESOLUTION_LEN_   = 4
+_EID_MSMT_RPT_LCI_AZIMUTH_AZIMUTH_START_    = 7
+def _iesubelmsmtrptlicazimuth_(v):
+    """ :returns: parsed azimuth report """
+    a = {}
+    a['rsrv'] = bits.leastx(_EID_MSMT_RPT_LCI_AZIMUTH_TYPE_START_,v)
+    a['type'] = bits.midx(_EID_MSMT_RPT_LCI_AZIMUTH_TYPE_START_,
+                          _EID_MSMT_RPT_LCI_AZIMUTH_TYPE_LEN_,
+                          v)
+    a['resolution'] = bits.midx(_EID_MSMT_RPT_LCI_AZIMUTH_RESOLUTION_START_,
+                                _EID_MSMT_RPT_LCI_AZIMUTH_RESOLUTION_LEN_,
+                                v)
+    a['azimuth'] = bits.mostx(_EID_MSMT_RPT_LCI_AZIMUTH_AZIMUTH_START_,v)
+    return a
+
+# MSMT Report->TX Stream/Category MSMT report reporting reason Std Fig.8-166
+_EID_MSMT_RPT_TX_RPT_REASON_ = {
+    'avg-trigger':(1<<0),
+    'cons-trigger':(1<<1),
+    'delay-trigger':(1<<2)
+}
+_EID_MSMT_RPT_TX_RPT_REASON_RSRV_START_ = 3
+def _eidmsmtrpttxrptreason_(v):
+    """ :returns: parsed report reason of msmt rpt """
+    r = bits.bitmask_list(_EID_MSMT_RPT_TX_RPT_REASON_,v)
+    r['rsrv'] = bits.mostx(_EID_MSMT_RPT_TX_RPT_REASON_RSRV_START_,v)
+    return r
+
+# MSMT Report->Location Civic Report subelements Std Table 8-95
+def _iesubelmsmtrptloccivic_(s,sid):
+    """ :returns: parsed optional subelements for location civic report """
+    ret = s
+    if sid == std.EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_ORIGIN:
+        ret = {'originator':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_TARGET:
+        ret = {'target': _hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_LOC_REF:
+        # Std Fig. 8-170. loc reference is an ASCII string
+        ret = {'loc-ref':s}
+    elif sid == std.EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_LOC_SHAPE:
+        # Std Fig. 8-171
+        ret = {'loc-shape-id':struct.unpack_from('=B',s)[0]}
+        if ret['loc-shape-id'] == std.LOC_SHAPE_2D_PT: # Std Fig. 8-172
+            x,y = struct.unpack_from('=2f',s,1)
+            ret['shape'] = {'x':x,'y':y}
+        elif ret['loc-shape-id'] == std.LOC_SHAPE_3D_PT: # Std Fig. 8-173
+            x,y,z = struct.unpack_from('=3f',s,1)
+            ret['shape'] = {'x':x,'y':y,'z':z}
+        elif ret['loc-shape-id'] == std.LOC_SHAPE_CIRCLE: # Std Fig. 8-174
+            x,y,r = struct.unpack_from('=3f',s,1)
+            ret['shape'] = {'x':x,'y':y,'radius':r}
+        elif ret['loc-shape-id'] == std.LOC_SHAPE_SPHERE: # Std Fig 8-175
+            x,y,z,r = struct.unpack_from('=4f',s,1)
+            ret['shape'] = {'x':x,'y':y,'z':z,'radius':r}
+        elif ret['loc-shape-id'] == std.LOC_SHAPE_POLYGON: # Std Fig 8-176
+            n = struct.unpack_from('=B',s,1)[0]
+            pts = []
+            for i in xrange(n):
+                x,y = struct.unpack_from('=2f',s,2+(i*struct.calcsize('=2f')))
+                pts.append({'x':x,'y':y})
+            ret['shape'] = {'num-pts':n,'points':pts}
+        elif ret['loc-shape-id'] == std.LOC_SHAPE_PRISM: # Std fig. 8-177
+            n = struct.unpack_from('=B',s,1)[0]
+            pts = []
+            for i in xrange(n):
+                x,y,z = struct.unpack_from('=3f',s,2+(i*struct.calcsize('=3f')))
+                pts.append({'x':x,'y':y,'z':z})
+            ret['shape'] = {'num-pts': n, 'points': pts}
+        elif ret['loc-shape-id'] == std.LOC_SHAPE_ELLIPSE: # Std Fig 8-178
+            x,y,a,ax1,ax2 = struct.unpack_from('=2fH2f',s,1)
+            ret['shape'] = {'x':x,'y':y,'angle':a,'major-axis':ax1,'minor-axis':ax2}
+        elif ret['loc-shape-id'] == std.LOC_SHAPE_ELLIPSOID: # Std fig 8-179
+            x,y,z,a,ax1,ax2,ax3 = struct.unpack_from('=3fH3f',s,1)
+            ret['shape'] = {'x':x,'y':y,'z':z,'angle':a,
+                            'major-axis':ax1,
+                            'minor-axis':ax2,
+                            'vertical-axis':ax3}
+        elif ret['loc-shape-id'] == std.LOC_SHAPE_ARCBAND: # Std Fig. 8-180
+            x,y,ri,ro,s,o = struct.unpack_from('=4f,2H',s,1)
+            ret['shape'] = {'x':x,'y':y,
+                            'inner-radius':ri,
+                            'outer-radius':ro,
+                            'start-angle':s,
+                            'opening-angle':o}
+    elif sid == std.EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_MAP_IMAGE:
+        # Std Fig 8-181
+        ret = {'map-type':struct.unpack_from('=B',s)[0]}
+        ret['map-url'] = s[1:]
+    elif sid == std.EID_MSMT_RPT_LOC_CIVIC_SUBELEMENT_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# MSMT Request subelements for Type Location Id Report Std Table 8-98
+def _iesubelmsmtrptlocid_(s,sid):
+    """ :returns: parsed subelement of type location civic in msmt request """
+    ret = s
+    if sid == std.EID_MSMT_REQ_SUBELEMENT_LOC_ID_ORIGIN:
+        ret = {'originator':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_LOC_ID_TARGET:
+        ret = {'target':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EID_MSMT_REQ_SUBELEMENT_LOC_ID_VEND:
+        ret = _parseie_(std.EID_VEND_SPEC,s)
+    return ret
+
+# EVENT REQUEST sublements for Type transition Std 8.4.2.69.2
+def _iesubelevreqtransistion_(s,sid):
+    """ :returns: parsed subelements of type transistion in event request """
+    ret = s
+    if sid == std.EVENT_REQUEST_TYPE_TRANSITION_TARGET:
+        ret = {'tgt-bssid':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EVENT_REQUEST_TYPE_TRANSITION_SOURCE:
+        ret = {'src-bssid':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EVENT_REQUEST_TYPE_TRANSITION_TIME_TH:
+        ret = {'trans-time-threshold':struct.unpack_from('=H',s)[0]}
+    elif sid == std.EVENT_REQUEST_TYPE_TRANSITION_RESULT:
+        v = struct.unpack_from('=B',s)[0]
+        ret = {'match-val':_eidevreqsubelmatchval_(v)}
+    elif sid == std.EVENT_REQUEST_TYPE_TRANSITION_FREQUENT:
+        ft,t = struct.unpack_from('=BH',s)
+        ret = {'freq-transistion-cnt-threahold':ft,'time-intv':t}
+    return ret
+
+# EVENT REQUEST match value for Type transition Std Fig 8-272
+_EID_EVENT_REQ_TRANSITION_MATCH_VALUE_ = {
+    'include-success':(1<<0),
+    'include-failed':(1<<1)
+}
+_EID_EVENT_REQ_TRANSITION_MATCH_VALUE_RSRV_START_ = 2
+def _eidevreqsubelmatchval_(v):
+    """ :returns: parsed match value of transistion type in event request """
+    mv = bits.bitmask_list(_EID_EVENT_REQ_TRANSITION_MATCH_VALUE_,v)
+    mv['rsrv'] = bits.mostx(_EID_EVENT_REQ_TRANSITION_MATCH_VALUE_RSRV_START_,v)
+    return mv
+
+# EVENT REQUEST sublements for Type RSNA Std 8.4.2.69.3
+def _iesubelevreqrsna_(s,sid):
+    """ :returns: parsed subelements of type RSNA in event request """
+    ret = s
+    if sid == std.EVENT_REQUEST_TYPE_RSNA_TARGET:
+        ret = {'tgt-bssid':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EVENT_REQUEST_TYPE_AUTH_TYPE:
+        ret = {'auth-type':_parsesuitesel_(s)}
+    elif sid == std.EVENT_REQUEST_TYPE_EAP_METHOD:
+        ret = {'eap-type':struct.unpack_from('=B',s)[0]}
+        if ret['eap-type'] == 254:
+            # include eap vendor id
+            # TODO: combine the below into a function as it appears more than
+            # once in the code
+            ret['eap-vend-id'] = _hwaddr_(struct.unpack_from('=3B',s,1))
+            ret['eap-vend-type'] = struct.unpack_from('=I',s,4)[0]
+    elif sid == std.EVENT_REQUEST_TYPE_RSNA_RESULT:
+        v = struct.unpack_from('=B',s)[0]
+        ret = {'match-val':_eidevreqsubelmatchval_(v)}
+    return ret
+
+# EVENT REQUEST sublements for Type Peer-to-Peer link Std 8.4.2.69.4
+def _iesubelevreqp2p_(s,sid):
+    """ :returns: parsed sublements of type P2P link in event request """
+    ret = s
+    if sid == std.EVENT_REQUEST_TYPE_P2P_PEER:
+        ret = {'peer-addr':_hwaddr_(struct.unpack_from('=6B',s))}
+    elif sid == std.EVENT_REQUEST_TYPE_P2P_CH_NUM:
+        # TODO: make this a single function -> it appears multiple times
+        o,c = struct.unpack_from('=2B',s)
+        ret = {'op-class':o,'ch-num':c}
+    return ret
+
+# EVENT REQUEST sublements for Type Vend Std 8.4.2.69.5
+def _iesubelevreqvend_(s,sid):
+    """ :returns: parsed sublements of type vend in event request """
+    ret = s
+    if sid == std.EID_VEND_SPEC: ret = {'vend':_parseie_(std.EID_VEND_SPEC,s)}
     return ret
 
 # SUPPORTED RATES/EXTENDED RATES Std 8.4.2.3 and 8.4.2.15
@@ -1862,12 +2886,93 @@ def _edisecchoffset_(v):
     elif v == _EID_SEC_CH_OFFSET_SCB_: return 'scb'
     else: return "rsrv-{0}".format(v)
 
-# constants for TCLAS Processing Std Table 8-113
-# ???? move to ieee80211 ???? 
-_EID_TCLAS_PRO_ALL_  = 0
-_EID_TCLAS_PRO_ONE_  = 1
-_EID_TCLAS_PRO_NONE_ = 2
-# NOTE: 3-255 are reserved
+# MSMT Report subelement Type Basic map field Std Fig. 8-143
+_EID_MSMT_RPT_BASIC_MAP_ = {
+    'bss':(1<<0),
+    'ofdm':(1<<1),
+    'unident':(1<<2),
+    'radar':(1<<3),
+    'unmeas':(1<<4)
+}
+_EID_MSMT_RPT_BASIC_MAP_RSRV_START_ = 5
+def _eidmsmtrptbasicmap_(v):
+    """ :returns: parsed map subfield of msmt report basic report """
+    m = bits.bitmask_list(_EID_MSMT_RPT_BASIC_MAP_,v)
+    m['rsrv'] = bits.mostx(_EID_MSMT_RPT_BASIC_MAP_RSRV_START_,v)
+    return m
+
+# Reporting reason subelement definitions
+# STA Counters: Fig. 8-159
+_EID_MSMT_RPT_REASON_STA_ = {
+    'dot11Failed':(1<<0),
+    'dot11FCSError':(1<<1),
+    'dot11MultipleRetry':(1<<2),
+    'dot11FrameDuplicate':(1<<3),
+    'dot11RTSFailure':(1<<4),
+    'dot11ACKFailure':(1<<5),
+    'dot11Retry':(1<<6),
+    'rsrv':(1<<7)
+}
+# QoS Counters: Fig. 8-160
+_EID_MSMT_RPT_REASON_QOS_ = {
+    'dot11QoSFailed':(1<<0),
+    'dot11QoSRetry':(1<<1),
+    'dot11QoSMultipleRetry':(1<<2),
+    'dot11QoSFrameDuplicate':(1<<3),
+    'dot11QoSRTSFailure':(1<<4),
+    'dot11QoSACKFailure':(1<<5),
+    'dot11QoSDiscarded':(1<<6),
+    'rsrv':(1<<7)
+}
+# RSNA Counters: Fig. 8-161
+_EID_MSMT_RPT_REASON_RSNA_ = {
+    'dot11RSNAStatsCMACICVErrors':(1<<0),
+    'dot11RSNAStatsCMACReplays':(1<<1),
+    'dot11RSNAStatsRobustMgmtCCMPReplays':(1<<2),
+    'dot11RSNAStatsTKIPICVErrors':(1<<3),
+    'dot11RSNAStatsTKIPReplays':(1<<4),
+    'dot11RSNAStatsTKIP2Replays':(1<<5), # this is in Std but not sure if it is right
+    'dot11RSNAStatsCCMPReplays':(1<<6),
+    'rsrv':(1<<7)
+}
+def _eidmsmtrptstareason_(v,g):
+    """ :returns: parsed reason based on grp-id g """
+    if g <= 1: return bits.bitmask_list(_EID_MSMT_RPT_REASON_STA_,v)
+    elif 2 <= g <= 9: return bits.bitmask_list(_EID_MSMT_RPT_REASON_QOS_,v)
+    elif g == 16: return bits.bitmask_list(_EID_MSMT_RPT_REASON_RSNA_,v)
+    else: return v
+
+# MSMT Reprot LCI format Std Fig. 8-162
+# NOTE: same as DSE location fields upto and including datum We define the fields
+# as a list of tuples (Name,Start Bit,Length,Num Nulls,Format)
+_EID_MSMT_RPT_LCI_FIELDS_ = [
+    ('lat-res',0,6,2,'=B'),
+    ('lat-frac',6,25,7,'=I'),
+    ('lat-int',31,9,7,'=H'),
+    ('lon-res',40,6,2,'=B'),
+    ('lon-frac',46,25,7,'=I'),
+    ('lon-int',71,9,7,'=H'),
+    ('alt-type',80,4,4,'=B'),
+    ('alt-res',84,6,2,'=B'),
+    ('alt-frac',90,8,0,'=B'),
+    ('alt-int',98,22,10,'=I'),
+    ('datum',120,3,5,'=B')
+]
+def _parselcirpt_(s):
+    """ :returns: parsed lci location elements """
+    lci = {}
+    for n,i,l,x,f in _EID_MSMT_RPT_LCI_FIELDS_:
+        lci[n] = struct.unpack_from(f,s[i:i+l]+'\x00'*x)
+    return lci
+
+# MSMT Report->MCast Diagn report reason field Std Fig. 8-188
+_EID_MSMT_RPT_MCAST_REASON_ = {'inactivity-to-trigger':(1<<0),'msmt-rpt':(1<<1)}
+_EID_MSMT_RPT_MCAST_REASON_RSRV_START_ = 2
+def _eidmsmtrptmcastreason_(v):
+    """ :returns: parsed mcast reason """
+    r = bits.bitmask_list(_EID_MSMT_RPT_MCAST_REASON_,v)
+    r['rsrv'] = bits.mostx(_EID_MSMT_RPT_MCAST_REASON_RSRV_START_,v)
+    return r
 
 # Schedule element->Schedule Info field Std Table 8-212
 # Std 8.4.2.36
@@ -1895,12 +3000,6 @@ def _eidftcappol_(v):
     ft = bits.bitmask_list(_EID_MDE_FT_,v)
     ft['rsrv'] = bits.mostx(_EID_MDE_FT_RSRV_START_,v)
     return ft
-
-# TIE interval type field values Std Table 8-122
-std.EID_TIE_TYPE_REASSOC  = 1
-std.EID_TIE_TYPE_KET_LIFE = 2
-std.EID_TIE_TYPE_COMEBACK = 3
-# NOTE 0, 4=255 are reserved
 
 # 20/40 Coexistence information field Std Figure 8-260
 # Info Re1|40 Intolerant|20 Request|Exempt Request|Exempt Grant|Reserved
@@ -2052,10 +3151,10 @@ def _eidtspectsinfo_(v):
     return tsi
 
 # DES Registered location element subfields Std Fig 8-244
-# unlike others, DSE is a not a byte oriented field. We define the fields as
+# unlike others, DSE is not a byte oriented field. We define the fields as
 # a list of tuples (Name,Start Bit,Length,Num Nulls,Format)
 # NOTE: while we could treat datum,reg-loc-agree,reg-loc-dse,depend-sta &
-# reserved a single 1-byte field, we decided to leave in the same format
+# reserved sa single 1-byte field, we decided to leave in the same format
 _EID_DSE_FIELDS_ = [
     ('lat-res',0,6,2,'=B'),
     ('lat-frac',6,25,7,'=I'),
@@ -2077,7 +3176,7 @@ def _parseinfoeldse_(s):
     """ :returns: parsed dse location from packed string s """
     dse = {}
     for n,i,l,x,f in _EID_DSE_FIELDS_:
-        dse[n] = struct.unpack_from(f,s[i:i+l]+'\x00'*2)
+        dse[n] = struct.unpack_from(f,s[i:i+l]+'\x00'*x)
 
     # last three fields are byte centric
     dei,op,chn = struct.unpack_from('=H2B',s,len(s)-4)
@@ -2255,6 +3354,65 @@ def _eidqoscap_(v,ap=True):
                                      v)
     return qc
 
+# Extended capabilities bitmask field Std Table 8-103
+_EID_EXT_CAP_ = {
+    '20/40':(1<<0),
+    'rsrv-1':(1<<1),
+    'ext-ch-switch':(1<<2),
+    'rsrv-2':(1<<3),
+    'psmp-cap':(1<<4),
+    'rsrv-3':(1<<5),
+    's-psmp-support':(1<<6),
+    'event:':(1<<7),
+    'diag':(1<<8),
+    'mcast-diag':(1<<9),
+    'loc-tracking':(1<<10),
+    'fms':(1<<11),
+    'proxy-arp-ser':(1<<12),
+    'collocated-interference-rpt':(1<<13),
+    'civic-loc':(1<<14),
+    'geo-loc':(1<<15),
+    'tfs':(1<<16),
+    'wnm-sleep-mode':(1<<17),
+    'tim-bcast':(1<<18),
+    'bss-transistion':(1<<19),
+    'qos-traff-cap':(1<<20),
+    'ac-sta-cnt':(1<<21),
+    'mult-bssid':(1<<22),
+    'timing-msmt':(1<<23),
+    'ch-usage':(1<<24),
+    'ssid-list':(1<<25),
+    'dms':(1<<26),
+    'utc-tsf-offset':(1<<27),
+    'tdls-peer-uapsd':(1<<28),
+    'tdls-peer-psm':(1<<29),
+    'tdls-ch-switch':(1<<30),
+    'interworking':(1<<31),
+    'qos-map':(1<<32),
+    'ebr':(1<<33),
+    'sspn-interface':(1<<34),
+    'rsrv-4':(1<<35),
+    'msgcf-cap':(1<<36),
+    'tdls-spt':(1<<37),
+    'tdls-prohibited':(1<<38),
+    'tdls-ch-switch-prohibited':(1<<39),
+    'reject-unadmitted':(1<<40),
+    'id-loc':(1<<44),
+    'uapsd-coexist':(1<<45),
+    'wnm-notify':(1<<46),
+    'rsrv-5':(1<<47),
+    'utf8-ssid':(1<<49)
+}
+_EID_EXT_CAP_SIG_START_ = 41
+_EID_EXT_CAP_SIG_LEN_   =  2
+def _eidextcap_(v):
+    """ :returns: parsed extended capabilities field """
+    ec = bits.bitmask_list(_EID_EXT_CAP_,v)
+    ec['ser-intv-granularity'] = bits.midx(_EID_EXT_CAP_SIG_START_,
+                                           _EID_EXT_CAP_SIG_LEN_,
+                                           v)
+    return ec
+
 # Measurement Request Mode of the Measurement request element Std Fig 8-105
 _EID_MSMT_REQ_MODE_ = {
     'parallel':(1<<0),
@@ -2270,13 +3428,11 @@ def _eidmsmtreqmode_(v):
     rm['rsrv'] = bits.mostx(_EID_MSMT_REQ_MODE_RSRV_START_,v)
     return rm
 
-# Suite Selector Std Figure 8-187
-def _eidrsnesuitesel_(v):
-    """
-     :param v: list of 4 1-octet ints
-     :returns: the suite selector dict
-    """
-    return {'oui':_hwaddr_(v[0:3]).replace(':','-'),'suite-type':v[-1]}
+# Suite selector Std Figure 8-187, Table 8-99
+def _parsesuitesel_(s):
+    """ :returns: parse suite selector from packed string s """
+    vs = struct.unpack_from('=4B',s)
+    return {'oui':_hwaddr_(vs[0:3]).replace(':','-'),'suite-type':vs[-1]}
 
 # RSN capabilities of the RSNE Std Fig 8-188
 _EID_RSNE_CAP_ = {
@@ -2569,6 +3725,68 @@ def _eidpxuinfoflags_(v):
     fs = bits.bitmask_list(_EID_PXU_INFO_FLAGS_,v)
     fs['rsrv'] = bits.mostx(_EID_PXU_INFO_FLAGS_DIVIDER_,v)
     return fs
+
+# Std Fig 8-251 MCS set
+# Rx MCS Bitmask|Rsrv|Rx Highest|Rsrv|Tx MCS Set|TX/RX MCS !=|TX Max|TX !=|Rsrv
+#             77|   3|        10|   6|         1|           1|     2|    1|27
+# |<--    8,2     -->|<--    2    -->|<--                4                 -->|
+_MCS_SET_RX_MCS_BM_RSRV_START_ = 13
+_MCS_SET_TX_HIGHEST_DIVIDER_ = 10
+_MCS_SET_LAST_ = {
+    'tx-ms-set-defined':(1<<0),
+    'tx/rx-mcs-set-unequal':(1<<1),
+    'tx-unequal-mod':(1<<4)
+}
+_MCS_SET_LAST_TX_MAX_START_ = 2
+_MCS_SET_LAST_TX_MAX_LEN_   = 2
+_MCS_SET_LAST_RSRV_START_   = 5
+def _parsemcsset_(s):
+    """ :returns: parsed mcs set """
+    # mcs set is a 16 bit number. We break it down into the above 8-byte,2-byte
+    # 2-byte, and 4-byte
+    vs = struct.unpack('=Q2HI',s)
+    # do last 4-byte first
+    m = bits.bitmask_list(_MCS_SET_LAST_,vs[3])
+    m['tx-max-num-spatial'] = bits.midx(_MCS_SET_LAST_TX_MAX_START_,
+                                        _MCS_SET_LAST_TX_MAX_LEN_,
+                                        vs[3])
+    m['rsrv-3'] = bits.mostx(_MCS_SET_LAST_RSRV_START_,vs[3])
+
+    # then middle 2-byte
+    m['tx-highest-sup-data-rate'] = bits.leastx(_MCS_SET_TX_HIGHEST_DIVIDER_,vs[2])
+    m['rsrv-2'] = bits.mostx(_MCS_SET_TX_HIGHEST_DIVIDER_,vs[2])
+
+    # and first 10-byte. Note for this, we'll use a list where B_i corresponds
+    # to MCS_i. Because the rx mcs bitmask is 77 bits, it is unpacked as a
+    # 8-byte integer and 2-byte integer. Each of these ints is processed in
+    # turn
+    #m['rx-mcs-bitmask'] = [0]*_MCS_SET_RX_MCS_BM_LEN_
+    #for i in xrange(struct.calcsize('=Q')):
+    #    if (1<<i) & vs[0]: m['rx-mcs-bitmask'][i] = 1
+    # first 64 bits from '=Q'
+    m['rx-mcs-bitmask'] = [0]*64 # initial 8-bytes
+    for i in xrange(len(m['rx-mcs-bitmask'])):
+        if (1<<i) & vs[0]: m['rx-mcs-bitmask'][i] = 1
+    # next 13 bits from '=H'
+    for i in xrange(_MCS_SET_LAST_RSRV_START_):
+        if (1<<i) & vs[1]: m['rx-mcs-bitmask'].append(1)
+        else: m['rx-mcs-bitmask'].append(0)
+    # last 3 bits are reserved
+    m['rsrv-1'] = bits.mostx(_MCS_SET_RX_MCS_BM_RSRV_START_,vs[1])
+    return m
+
+# Std Table 8-132 Time Value (10-byte element H5BHB
+def _parsetimeval_(s):
+    """ :returns: a parsed time value from packed string s """
+    tval = struct.unpack_from('=H5BHB',s)
+    return {'year':tval[0],
+            'month':tval[1],
+            'day':tval[2],
+            'hours':tval[3],
+            'minutes':tval[4],
+            'seconds':tval[5],
+            'milliseconds':tval[6],
+            'rsrv':tval[7]}
 
 ################################################################################
 #### CTRL Frames Std 8.3.1

@@ -25,32 +25,21 @@
    o TIM needs further parsing
    o TPC Report, link-margin. Is it processed correctly
    o need a frame with Supported Channels element to look at IOT parse it
-   o rehit after taking care of 'easier' elements
-     - Measurement Request Element: parse measurement request field
-     - Measurement Report Element: parse measurement report field
-     - Extended Capabilities element: see comments in _mpdu
-     - TCLAS element: parse frame classifier params
-     - Challange Text: is there more we can do with this?
-     - BSS Available Admission Capacity
+   o not fully parsed
      - RIC Descripton element: variable parameters need to be parsed as block ack
        8.4.1.14, 8.4.1.15 and 8.3.1.8
-     - HT capabilities element: have to parse the mcs set subfield
-     - HT Operation element: have to parse the mcs set subfield
-     - Time Advertisement: further parse time value, time error & time update counter
-     - Event Request: parse variable event request
-     - Event Report: parse variable event request, parse TSF, UTC and Time Error
+     - Time Advertisement: parse timing val when tcap == 1
+     - Event Report: request type rsna parsing (see TODO)
        (see Time Advertisement element for this)
-     - FMS Request & Response: have to parse optional TCLAS elements, TCLAS
-       Processing element
-     - TFS Request: have to parse optional TCLAS elements, TCLAS Processing element
      - DMS Request: parse remaining DMS descriptor subfields
      - DMS Response: parse remaining DMS status subfields
      - Mesh Link metric: have to parse the link metric See 8.4.2.100.3 and Table 13-5
-     - Auth. Mesh Peering Exchange: only the cipher suite is parsed
-     - QoS Capability element: determine if sent by AP or non-AP
-     - supported Operating Classes: further parsing of operating classes element
-     - BSSID index element: have to seperate dtim period and dtim count
-     - Multiple BSSID: parse optional sublement
+     - Auth. Mesh Peering Exchange: how to determine if key-replay, gtkdata and
+       igtkdata is present
+     - QoS Capability element: has to be parsed based on if it was sent by sent
+       by AP or non-AP Either figure out how to get that info down or expose the
+       fct _eidqoscap_(v,ap) at the public level
+     - Multiple BSSID: parse non-transmitted bssid profile
    o for vendor specific info-elements is there info out there on the most common
     or some other methods for determining how for example wireshark parses these
     looks like there is some further consistency from wireshark reviews
@@ -70,6 +59,8 @@
        * DSE - altitude
        * find any we may have missed
        * vertical speed subelement field in location status subelement 8.4.2.73.6
+       * Timing Advertisement->Time Value when Timing Capabilities = 1 is a 10-byte
+        2's complement
      - neighbor rpt optional sublements, bearing subelement verify distance &
       relative height as float and signed short
    o Info element: Country element is currently treated as 3 unsigned octets but
@@ -78,13 +69,9 @@
    o Annex E for operating class and channel number
     - AP Channel Report
     - 20/40 Intolerant Channel Report
-   o find all info elements that reference subelements Fig 8-40
-   o Std Table 8-160
   29) add Tables 8-99, 8-100, 8-101 to ieee80211
-  30) change _parseinfosubel_ to accept a function that is applied to each
-   subfield. This allows the subelements to be pulled off and parsed w/out
-   requiring two iterations
   31) for information elements, should we set as a dict for even those with one field
   such as ssid? i.e. (ssid_id,{'ssid':ssid_name}) or leave as is i.e.
   (ssid_id,ssid_name)
   32) Have to go through and standarize naming conventions of constants & fcts
+  33) in the TCLAS information element addresses in IPv4 & IPv6 are not parsed
