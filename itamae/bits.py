@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-""" bits: bit related functions
+""" bits: bitmask related functions
 
 Copyright (C) 2016  Dale V. Patterson (wraith.wireless@yandex.com)
 

@@ -19,3 +19,4 @@ v 0.1.2
  o began parsing of all info_elements (see TODO for those not completed)
  o modified getie, geties in mpdu
  o info_elements in mgmt frames changed from list to dict
+ o added int2s - 2's complement to _mpdu

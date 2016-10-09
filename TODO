@@ -4,6 +4,7 @@
      o +htc - can parse this currently but have not seen any frames to test on
      o a-msdu etc
      o mgmt.atim
+     o action frames?
   6) 802.1X parsing?
   7) other 802.11 standards i.e mesh
   8) do we extend for 802.2 LLC and layer 3 IP parsing?
@@ -26,9 +27,6 @@
    o TPC Report, link-margin. Is it processed correctly
    o need a frame with Supported Channels element to look at IOT parse it
    o not fully parsed
-     - RIC Descripton element: variable parameters need to be parsed as block ack
-       8.4.1.14, 8.4.1.15 and 8.3.1.8
-     - Time Advertisement: parse timing val when tcap == 1
      - Event Report: request type rsna parsing (see TODO)
        (see Time Advertisement element for this)
      - DMS Request: parse remaining DMS descriptor subfields
@@ -50,19 +48,7 @@
    o For RDE, see 8.4.1.9, code in values of status code
    o for Supported operating classes see 10.10.1 and 10.11.9.1 for info on
     operating classes element
-   o for Nontransmitted BSSID capability set 8.4.2.48, 10.11.14 & 10.1.3.6
-   o non-unsigned values:
-     - twos complement signed integer value
-       * interference level field in Collocated Interference Report element
-       * TPC Report element
-       * Time Advertisement element
-       * DSE - altitude
-       * find any we may have missed
-       * vertical speed subelement field in location status subelement 8.4.2.73.6
-       * Timing Advertisement->Time Value when Timing Capabilities = 1 is a 10-byte
-        2's complement
-     - neighbor rpt optional sublements, bearing subelement verify distance &
-      relative height as float and signed short
+   o for Nontransmitted BSSID capability see 8.4.2.48, 10.11.14 & 10.1.3.6
    o Info element: Country element is currently treated as 3 unsigned octets but
     see Std, the Max Tx Pwr Lvl/Cov class may actually be unsigned in some cases.
     No definition of when this is
@@ -75,3 +61,8 @@
   (ssid_id,ssid_name)
   32) Have to go through and standarize naming conventions of constants & fcts
   33) in the TCLAS information element addresses in IPv4 & IPv6 are not parsed
+  34) have to confirm int2s in _mpdu is correct
+  35) confirm Location information reports LCI pg 531 and DSE pg 601
+  36) neighbor rpt optional sublements, bearing subelement verify distance &
+      relative height as float and signed short
+  37) Action Fields

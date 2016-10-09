@@ -21,7 +21,7 @@ modifications, are permitted provided that the following conditions are met:
     this software without specific prior written permission.
 
 Supports the parsing of 802.11 MAC Protocol Data Unit (MPDU) IAW IEEE 802.11-2012
-(Std).
+(Std) as defined in Chapter 8 of the Std.
 
 """
 
@@ -672,13 +672,11 @@ def _parseie_(eid,info):
             info = {'min':mn,'max':mx}             # in dBm
         elif eid == std.EID_TPC_REQ: pass # Std 8.4.2.18 (a flag w/ no info
         elif eid == std.EID_TPC_RPT: # Std 8.4.2.19
-            # 2 element, tx pwr in dBm & twos-complement dBm
-            # see also 8,3,3,2, 8.3.3.10 8.5.2.5 & 19.8.6
-            pwr,link = struct.unpack_from('=Bb',info)
-            info = {'tx-power':pwr,'link-margin':link}
+            # 2 element, tx pwr,link margin in twos-complement dBm
+            info = {'tx-power':int2s(info[0]),
+                    'link-margin':int2s(info[1])}
         elif eid == std.EID_CHANNELS: # Std 8.4.2.20
-            # Repeating: First Ch Num|Num channels
-            #                       1|           1
+            # Repeating: First Ch Num (1)|Num channels (1)
             # return as a list of tuples
             chs = []
             for i in xrange(0,len(info),2):
@@ -1210,7 +1208,7 @@ def _parseie_(eid,info):
             if tcap == 1:
                 # time value field & time error field present
                 info = {'timing-cap':tcap,
-                        'time-val':info[1:11],
+                        'time-val':int2s(info[1:11]),
                         'time-err':struct.unpack_from('=Q',info[11:16]+'\x00\x00\x00')[0]}
             elif tcap == 2:
                 # time value field, time error field & time update counter field present
@@ -1249,8 +1247,11 @@ def _parseie_(eid,info):
                     'threshold':vs[6]}
         elif eid == std.EID_RIC_DESC: # Std 8.4.2.53
             # 1 octect followed by variable parameters (based on resource type)
+            # Std Table 8-123 is somewhat confusing do the variable parameters
+            # contain each of block ack param set, block ack timeout & block ack
+            # starting seq. num or does it contain only one or more?
             info = {'res-type':struct.unpack_from('=B',info)[0],
-                    'opt-subels':_parseiesubel_(info[1:])}
+                    'params':binascii.hexlify(info[1:])}
         elif eid == std.EID_MGMT_MIC: # Std 8.4.2.57
             # KeyID|IPIN|MIC
             #     2|   6|  8
@@ -1356,7 +1357,7 @@ def _parseie_(eid,info):
                     'type':typ,
                     'stat':stat,
                     'opt-subels':_parseiesubel_(info[3:],_iesubeldiag_)}
-        elif eid == std.EID_LOCATION: # Std 8.3.2.73
+        elif eid == std.EID_LOCATION: # Std 8.4.2.73
             # it appears that each possible location subelement begins with
             # a subelement id references Table 1-183, length and a variable field
             # Subelement ID|Length|Paramaeters
@@ -1467,9 +1468,11 @@ def _parseie_(eid,info):
                 info = {'status': status}
         elif eid == std.EID_COLLOCATED_INTERFERENCE: # Std 8.4.2.87
             # 8 elements 1|1|1|4|4|4|4|2
+            # NOTE: it's easier to unpack all and then take the 2's complement
+            # of the interference level
             vs = struct.unpack_from('=3B4IH',info)
             info = {'period':vs[0],
-                    'intf-lvl':vs[1],
+                    'intf-lvl':int2s(info[1]),
                     'accuracy':bits.leastx(4,vs[2]),
                     'intf-idx':bits.mostx(4,vs[2]),
                     'intf-intv':vs[3],
@@ -1479,7 +1482,7 @@ def _parseie_(eid,info):
                     'intf-bw':vs[7]}
         elif eid == std.EID_CH_USAGE: # Std 8.4.2.88
             # 1 octet followed by a list of 2-octet channel entries
-            mode = struct.unpack_from('=B',info)
+            mode = struct.unpack_from('=B',info)[0]
             chs = []
             for i in xrange(1,len(info),2):
                 opclass,ch = struct.unpack_from('=2B',info,i)
@@ -2124,10 +2127,8 @@ def _iesubeldiag_(s,sid):
         ret = {'ssid':_parseie_(std.EID_SSID,s)}
     elif sid == std.EID_DIAG_SUBELEMENT_TX_POWER:
         # Std Fig. 8-307
-        # TODO: parse tx-power - each tx power is encoded in a single octet
-        # as a twos complement value in dBm
         ret = {'tx-pwr-mode':struct.unpack_from('=B',s)[0],
-               'tx-power':[struct.unpack_from('=B',x)[0] for x in s[1:]]}
+               'tx-power':[int2s(x) for x in s[1:]]}
     elif sid == std.EID_DIAG_SUBELEMENT_CERT:
         # Std Fig. 8-308
         ret = {'cert-id':s}
@@ -2191,12 +2192,12 @@ def _iesubelloc_(s,sid):
         p,i,g,rs,rc = struct.unpack_from('=bBb2B',s)
         ret = {'tx-pwr':p,'ant-id':i,'ant-gain':g,'rsni':rs,'rcpi':rc}
     elif sid == std.EID_LOCATION_SUBELEMENT_MOTION: # Fig 8-316
-        m,b,s,h,v = struct.unpack_from('=BHB2H',s)
+        m,b,s,h = struct.unpack_from('=BHB2',s)
         ret = {'motion-indicator':m,
                'bearing':b,
                'speed-units':s,
                'hor-speed':h,
-               'ver-speed':v}
+               'ver-speed':int2s(s[-2:])}
     elif sid == std.EID_LOCATION_SUBELEMENT_LIBDR: # Fig 8-317
         # defined in Std 8.4.1.32 in Figs. 8-69 and 8-70
         m,i,r = struct.unpack_from('=2BH',s)[0]
@@ -2362,8 +2363,11 @@ def _iesubelmsmtreqbeacon_(s,sid):
         ret = {'ssid':_iesubelssid_(s)}
     elif sid == std.EID_MSMT_REQ_SUBELEMENT_BEACON_BRI:
         # Std Fig. 8-114
-        r,t = struct.unpack_from('=2B',s)
-        ret = {'rpt-condition':r,'threshold':t}
+        r = struct.unpack_from('=B',s)[0]
+        if 5 <= r <= 10: t = int2s(s[1])
+        else: t = struct.unpack_from('=B',s,1)[0]
+        ret = {'rpt-condition':r,
+               'threshold':t}
     elif sid == std.EID_MSMT_REQ_SUBELEMENT_BEACON_RPT:
         # Std Table 8-67
         ret = {'rpt-detail':struct.unpack_from('=B',s)}
@@ -2962,7 +2966,11 @@ def _parselcirpt_(s):
     """ :returns: parsed lci location elements """
     lci = {}
     for n,i,l,x,f in _EID_MSMT_RPT_LCI_FIELDS_:
-        lci[n] = struct.unpack_from(f,s[i:i+l]+'\x00'*x)
+        if n == 'lat-int' or n == 'lon-int' or n == 'alt-int':
+            # these are 2's complement
+            lci[n] = int2s(s[i:i+1]+'\x00'*x)
+        else:
+            lci[n] = struct.unpack_from(f,s[i:i+l]+'\x00'*x)
     return lci
 
 # MSMT Report->MCast Diagn report reason field Std Fig. 8-188
@@ -3176,7 +3184,10 @@ def _parseinfoeldse_(s):
     """ :returns: parsed dse location from packed string s """
     dse = {}
     for n,i,l,x,f in _EID_DSE_FIELDS_:
-        dse[n] = struct.unpack_from(f,s[i:i+l]+'\x00'*x)
+        if n == 'lat-int' or n == 'lon-int' or n == 'alt-int':
+            dse[n] = int2s(s[i:i+l]+'\x00'*x)
+        else:
+            dse[n] = struct.unpack_from(f,s[i:i+l]+'\x00'*x)
 
     # last three fields are byte centric
     dei,op,chn = struct.unpack_from('=H2B',s,len(s)-4)
@@ -4151,3 +4162,12 @@ def _unpack_from_(fmt,b,o):
     vs = struct.unpack_from('='+fmt,b,o)
     if len(vs) == 1: vs = vs[0]
     return vs,o+struct.calcsize(fmt)
+
+def int2s(s):
+    """
+     returns a 2's compliment integer
+     :param s: a packed binary string
+     :returns: the 2's compliment
+    """
+    i = int(binascii.hexlify(s),16)
+    return i - ((i << 1) & 2 ** (len(s)*8))
